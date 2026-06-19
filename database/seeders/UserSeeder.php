@@ -25,9 +25,9 @@ class UserSeeder extends Seeder
         // Panelists
         $panelists = [
             [
-                'name' => 'Rabecca',
+                'name' => 'Mwiinga',
                 'email' => 'rabecca@pif.zm',
-                'password' => Hash::make('PIF_Rab_2026'),
+                'password' => Hash::make('PIF_Mwi_2026'),
                 'panelist_name' => 'Rabecca',
             ],
             [
@@ -52,6 +52,18 @@ class UserSeeder extends Seeder
                 'name' => 'Blessing',
                 'email' => 'blessing@pif.zm',
                 'password' => Hash::make('PIF_Ble_2026'),
+                'panelist_name' => 'Blessing',
+            ],
+            [
+                'name' => 'Jacqueline',
+                'email' => 'blessing@pif.zm',
+                'password' => Hash::make('PIF_Jac_2026'),
+                'panelist_name' => 'Blessing',
+            ],
+            [
+                'name' => 'Florence',
+                'email' => 'blessing@pif.zm',
+                'password' => Hash::make('PIF_Flo_2026'),
                 'panelist_name' => 'Blessing',
             ],
         ];
