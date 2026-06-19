@@ -17,10 +17,10 @@ class UserSeeder extends Seeder
         User::updateOrCreate(
             ['email' => 'super@pif.zm'],
             [
-                'name' => 'Super User',
+                'name' => 'Mutale',
                 'password' => 'PIF_Admin_2026', 
                 'role' => 'super',
-                'panelist_name' => null,
+                'panelist_name' => 'Mutale',
             ]
         );
 
@@ -43,12 +43,6 @@ class UserSeeder extends Seeder
                 'email' => 'bracious@pif.zm',
                 'password' => 'PIF_Bra_2026',
                 'panelist_name' => 'Bracious',
-            ],
-            [
-                'name' => 'Mutale',
-                'email' => 'mutale@pif.zm',
-                'password' => 'PIF_Mut_2026',
-                'panelist_name' => 'Mutale',
             ],
             [
                 'name' => 'Blessing',
