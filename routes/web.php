@@ -24,4 +24,5 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/literacy', [AdminController::class, 'literacyStore'])->name('admin.literacy.store');
     Route::get('/admin/panel', [PanelistController::class, 'index'])->name('admin.panel');
     Route::post('/admin/panel', [PanelistController::class, 'store'])->name('admin.panel.store');
+    //thinker
 });
