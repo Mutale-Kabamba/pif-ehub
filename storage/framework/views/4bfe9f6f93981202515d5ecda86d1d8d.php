@@ -1,8 +1,6 @@
-@extends('layouts.app')
+<?php $__env->startSection('title', 'Admin Login'); ?>
 
-@section('title', 'Admin Login')
-
-@section('content')
+<?php $__env->startSection('content'); ?>
 <div class="login-container">
     <div class="login-box">
         <h2 style="text-align: center; margin-bottom: 8px; color: #1a1a1a;">Restricted Administration Portal</h2>
@@ -11,24 +9,25 @@
             Please choose your system entity assignment to authenticate access.
         </div>
 
-        @if(session('error'))
+        <?php if(session('error')): ?>
             <div class="alert alert-error">
-                {{ session('error') }}
-            </div>
-        @endif
+                <?php echo e(session('error')); ?>
 
-        @if($errors->any())
+            </div>
+        <?php endif; ?>
+
+        <?php if($errors->any()): ?>
             <div class="alert alert-error">
                 <ul style="margin: 0; padding-left: 16px;">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
+                    <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <li><?php echo e($error); ?></li>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </ul>
             </div>
-        @endif
+        <?php endif; ?>
 
-        <form action="{{ route('admin.login.post') }}" method="POST">
-            @csrf
+        <form action="<?php echo e(route('admin.login.post')); ?>" method="POST">
+            <?php echo csrf_field(); ?>
 
             <div class="form-group">
                 <label for="role">Select Role</label>
@@ -59,4 +58,6 @@
         </form>
     </div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\mukuk\Documents\GitHub\pif-ehub\resources\views/admin/login.blade.php ENDPATH**/ ?>
