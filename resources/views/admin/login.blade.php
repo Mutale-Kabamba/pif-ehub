@@ -35,12 +35,12 @@
                 <select name="role" id="role" class="form-control" required>
                     <option value="">-- Select System Entity --</option>
                     <option value="Super User">Mutale</option>
-                    <option value="Sarah">Sarah</option>
-                    <option value="Bracious">Bracious</option>
-                    <option value="Blessing">Blessing</option>
-                    <option value="Mwiinga">Mwiinga</option>
-                    <option value="Jacqueline">Jacqueline</option>
-                    <option value="Florence">Florence</option>
+                    <option value="Blessing">Blessing (Panel A)</option>
+                    <option value="Sarah">Sarah (Panel A)</option>
+                    <option value="Bracious">Bracious (Panel A)</option>
+                    <option value="Jacqueline">Jacqueline (Panel B)</option>
+                    <option value="Florence">Florence (Panel B)</option>
+                    <option value="Mwiinga">Mwiinga (Cover)</option>
                 </select>
             </div>
 

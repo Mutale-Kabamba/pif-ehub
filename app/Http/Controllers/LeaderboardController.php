@@ -12,22 +12,20 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class LeaderboardController extends Controller
 {
     /**
-     * Compute and return the leaderboard data array.
+     * Compute and return the leaderboard data split by gender track.
      * Used by AdminController::dashboard() when tab=leaderboard.
      */
     public static function getLeaderboardData(): \Illuminate\Support\Collection
     {
         $candidates = Candidate::all();
 
-        $leaderboard = $candidates->map(function (Candidate $candidate) {
-            // Get literacy score (sum of 10 tasks, each 0-2 = max 20)
+        // 1. Map evaluation arrays with metrics
+        $mappedCandidates = $candidates->map(function (Candidate $candidate) {
             $literacyRecord = LiteracyScore::where('candidate_id', $candidate->id)->first();
             $literacyScore = $literacyRecord ? (float) $literacyRecord->total_score : 0;
             $assessmentDate = $literacyRecord ? $literacyRecord->assessment_date : null;
 
-            // Get panel scores: average each criterion across all panelists, then sum
             $panelScores = PanelScore::where('candidate_id', $candidate->id)->get();
-
             $interviewScore = 0;
 
             if ($panelScores->isNotEmpty()) {
@@ -36,15 +34,18 @@ class LeaderboardController extends Controller
                 $avgResilience      = $panelScores->avg('crit3_resilience');
                 $avgCommunication   = $panelScores->avg('crit4_communication');
 
-                // Each criterion avg is 1-5, sum = max 20
                 $interviewScore = round($avgMotivation + $avgAvailability + $avgResilience + $avgCommunication, 2);
             }
 
             $grandTotal = round($literacyScore + $interviewScore, 2);
 
+            // Use gender stored in database (set during seeding)
+            $gender = $candidate->gender ?? 'Female';
+
             return [
                 'id'               => $candidate->id,
                 'candidate_name'   => $candidate->name,
+                'gender'           => $gender,
                 'literacy_score'   => $literacyScore,
                 'interview_score'  => $interviewScore,
                 'grand_total'      => $grandTotal,
@@ -53,8 +54,8 @@ class LeaderboardController extends Controller
             ];
         });
 
-        // Sort properly using multi-level sort
-        $leaderboard = $leaderboard->sort(function ($a, $b) {
+        // 3. Multi-level Tie-Breaker Ordering
+        $sortFunction = function ($a, $b) {
             if ($a['grand_total'] !== $b['grand_total']) {
                 return $b['grand_total'] <=> $a['grand_total'];
             }
@@ -62,16 +63,28 @@ class LeaderboardController extends Controller
                 return $b['literacy_score'] <=> $a['literacy_score'];
             }
             return $a['candidate_name'] <=> $b['candidate_name'];
-        })->values();
+        };
 
-        // Add rank and status
-        $leaderboard = $leaderboard->map(function (array $entry, int $index) {
+        // 4. Filter and Rank Females (Top 7 Advance)
+        $females = $mappedCandidates->whereIn('gender', ['Female', 'female'])->sort($sortFunction)->values();
+        $females = $females->map(function (array $entry, int $index) {
             $entry['rank'] = $index + 1;
-            $entry['status'] = $entry['rank'] <= 10 ? 'ACCEPTED' : 'WAITLIST';
+            $entry['status'] = $entry['rank'] <= 7 ? 'ACCEPTED' : 'WAITLIST';
             return $entry;
         });
 
-        return $leaderboard;
+        // 5. Filter and Rank Males (Top 3 Advance)
+        $males = $mappedCandidates->where('gender', 'Male')->sort($sortFunction)->values();
+        $males = $males->map(function (array $entry, int $index) {
+            $entry['rank'] = $index + 1;
+            $entry['status'] = $entry['rank'] <= 3 ? 'ACCEPTED' : 'WAITLIST';
+            return $entry;
+        });
+
+        return collect([
+            'females' => $females,
+            'males'   => $males,
+        ]);
     }
 
     /**
@@ -81,7 +94,6 @@ class LeaderboardController extends Controller
     {
         $leaderboard = self::getLeaderboardData();
 
-        // CSV export if requested
         if ($request->query('format') === 'csv') {
             return $this->exportCsv($leaderboard);
         }
@@ -90,28 +102,44 @@ class LeaderboardController extends Controller
     }
 
     /**
-     * Export leaderboard as CSV download.
-     *
-     * @param  \Illuminate\Support\Collection  $leaderboard
+     * Export segmented leaderboard tracks as CSV download.
      */
     private function exportCsv(Collection $leaderboard): StreamedResponse
     {
         $headers = [
             'Content-Type'        => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="leaderboard.csv"',
+            'Content-Disposition' => 'attachment; filename="gender_separated_leaderboard.csv"',
         ];
 
         return response()->stream(function () use ($leaderboard) {
             $handle = fopen('php://output', 'w');
 
-            // Header row
-            fputcsv($handle, ['Rank', 'Name', 'Literacy Score (/20)', 'Interview Score (/20)', 'Grand Total (/40)', 'Status']);
-
-            // Data rows
-            foreach ($leaderboard as $entry) {
+            // --- FEMALE SELECTION TRACK ---
+            fputcsv($handle, ['FEMALE LEADERBOARD (Top 7 Advance)']);
+            fputcsv($handle, ['Rank', 'Name', 'Gender', 'Literacy Score (/20)', 'Interview Score (/20)', 'Grand Total (/40)', 'Status']);
+            foreach ($leaderboard['females'] as $entry) {
                 fputcsv($handle, [
                     $entry['rank'],
-                    $entry['name'],
+                    $entry['candidate_name'],
+                    $entry['gender'],
+                    $entry['literacy_score'],
+                    $entry['interview_score'],
+                    $entry['grand_total'],
+                    $entry['status'],
+                ]);
+            }
+
+            fputcsv($handle, []); // Blank separator rows
+            fputcsv($handle, []);
+
+            // --- MALE SELECTION TRACK ---
+            fputcsv($handle, ['MALE LEADERBOARD (Top 3 Advance)']);
+            fputcsv($handle, ['Rank', 'Name', 'Gender', 'Literacy Score (/20)', 'Interview Score (/20)', 'Grand Total (/40)', 'Status']);
+            foreach ($leaderboard['males'] as $entry) {
+                fputcsv($handle, [
+                    $entry['rank'],
+                    $entry['candidate_name'],
+                    $entry['gender'],
                     $entry['literacy_score'],
                     $entry['interview_score'],
                     $entry['grand_total'],
