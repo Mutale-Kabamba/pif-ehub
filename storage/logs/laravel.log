@@ -222,3 +222,103 @@
 #49 C:/Users/mukuk/Documents/GitHub/pif-ehub/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
 #50 {main}
 "} 
+[2026-06-22 12:52:32] production.ERROR: Command "seed" is not defined.
+
+Did you mean one of these?
+    db:seed
+    make:seeder {"exception":"[object] (Symfony\\Component\\Console\\Exception\\CommandNotFoundException(code: 0): Command \"seed\" is not defined.
+
+Did you mean one of these?
+    db:seed
+    make:seeder at C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php:759)
+[stacktrace]
+#0 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(298): Symfony/Component/Console/Application->find('seed')
+#1 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#2 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#3 C:/Users/mukuk/Documents/GitHub/pif-ehub/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#4 {main}
+"} 
+[2026-06-22 13:14:17] production.ERROR: PHP Parse error: Syntax error, unexpected T_NS_SEPARATOR, expecting T_VARIABLE on line 1 {"exception":"[object] (Psy\\Exception\\ParseErrorException(code: 0): PHP Parse error: Syntax error, unexpected T_NS_SEPARATOR, expecting T_VARIABLE on line 1 at C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Exception/ParseErrorException.php:44)
+[stacktrace]
+#0 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/CodeCleaner.php(657): Psy/Exception/ParseErrorException::fromParseError(Object(PhpParser/Error))
+#1 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/CodeCleaner.php(273): Psy/CodeCleaner->parse('<?php use App//M...', false)
+#2 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Shell.php(1364): Psy/CodeCleaner->clean(Array, false)
+#3 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Shell.php(1471): Psy/Shell->appendCode('use App//Models//...', true, false)
+#4 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Shell.php(2180): Psy/Shell->setCode('use App//Models//...', true)
+#5 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/tinker/src/Console/TinkerCommand.php(77): Psy/Shell->execute('use App//Models//...')
+#6 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Laravel/Tinker/Console/TinkerCommand->handle()
+#7 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate/Container/BoundMethod::Illuminate/Container/{closure}()
+#8 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(95): Illuminate/Container/Util::unwrapIfClosure(Object(Closure))
+#9 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate/Container/BoundMethod::callBoundMethod(Object(Illuminate/Foundation/Application), Array, Object(Closure))
+#10 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/Container.php(696): Illuminate/Container/BoundMethod::call(Object(Illuminate/Foundation/Application), Array, Array, NULL)
+#11 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Console/Command.php(213): Illuminate/Container/Container->call(Array)
+#12 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Command/Command.php(341): Illuminate/Console/Command->execute(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#13 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Console/Command.php(182): Symfony/Component/Console/Command/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#14 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(1117): Illuminate/Console/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#15 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(356): Symfony/Component/Console/Application->doRunCommand(Object(Laravel/Tinker/Console/TinkerCommand), Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#16 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#17 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#18 C:/Users/mukuk/Documents/GitHub/pif-ehub/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#19 {main}
+"} 
+[2026-06-22 13:14:41] production.ERROR: PHP Parse error: Syntax error, unexpected T_NS_SEPARATOR, expecting T_VARIABLE on line 1 {"exception":"[object] (Psy\\Exception\\ParseErrorException(code: 0): PHP Parse error: Syntax error, unexpected T_NS_SEPARATOR, expecting T_VARIABLE on line 1 at C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Exception/ParseErrorException.php:44)
+[stacktrace]
+#0 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/CodeCleaner.php(657): Psy/Exception/ParseErrorException::fromParseError(Object(PhpParser/Error))
+#1 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/CodeCleaner.php(273): Psy/CodeCleaner->parse('<?php echo App//...', false)
+#2 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Shell.php(1364): Psy/CodeCleaner->clean(Array, false)
+#3 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Shell.php(1471): Psy/Shell->appendCode('echo App//Models...', true, false)
+#4 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Shell.php(2180): Psy/Shell->setCode('echo App//Models...', true)
+#5 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/tinker/src/Console/TinkerCommand.php(77): Psy/Shell->execute('echo App//Models...')
+#6 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Laravel/Tinker/Console/TinkerCommand->handle()
+#7 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate/Container/BoundMethod::Illuminate/Container/{closure}()
+#8 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(95): Illuminate/Container/Util::unwrapIfClosure(Object(Closure))
+#9 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate/Container/BoundMethod::callBoundMethod(Object(Illuminate/Foundation/Application), Array, Object(Closure))
+#10 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/Container.php(696): Illuminate/Container/BoundMethod::call(Object(Illuminate/Foundation/Application), Array, Array, NULL)
+#11 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Console/Command.php(213): Illuminate/Container/Container->call(Array)
+#12 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Command/Command.php(341): Illuminate/Console/Command->execute(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#13 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Console/Command.php(182): Symfony/Component/Console/Command/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#14 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(1117): Illuminate/Console/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#15 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(356): Symfony/Component/Console/Application->doRunCommand(Object(Laravel/Tinker/Console/TinkerCommand), Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#16 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#17 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#18 C:/Users/mukuk/Documents/GitHub/pif-ehub/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#19 {main}
+"} 
+[2026-06-22 13:28:19] production.ERROR: The "--compact" option does not exist. {"exception":"[object] (Symfony\\Component\\Console\\Exception\\RuntimeException(code: 0): The \"--compact\" option does not exist. at C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Input/ArgvInput.php:226)
+[stacktrace]
+#0 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Input/ArgvInput.php(155): Symfony/Component/Console/Input/ArgvInput->addLongOption('compact', NULL)
+#1 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Input/ArgvInput.php(88): Symfony/Component/Console/Input/ArgvInput->parseLongOption('--compact')
+#2 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Input/ArgvInput.php(77): Symfony/Component/Console/Input/ArgvInput->parseToken('--compact', true)
+#3 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Input/Input.php(53): Symfony/Component/Console/Input/ArgvInput->parse()
+#4 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Command/Command.php(295): Symfony/Component/Console/Input/Input->bind(Object(Symfony/Component/Console/Input/InputDefinition))
+#5 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Console/Command.php(182): Symfony/Component/Console/Command/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#6 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(1117): Illuminate/Console/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#7 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(356): Symfony/Component/Console/Application->doRunCommand(Object(Illuminate/Foundation/Console/RouteListCommand), Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#8 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#9 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#10 C:/Users/mukuk/Documents/GitHub/pif-ehub/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#11 {main}
+"} 
+[2026-06-22 13:29:28] production.ERROR: PHP Parse error: Syntax error, unexpected T_NS_SEPARATOR, expecting T_VARIABLE on line 1 {"exception":"[object] (Psy\\Exception\\ParseErrorException(code: 0): PHP Parse error: Syntax error, unexpected T_NS_SEPARATOR, expecting T_VARIABLE on line 1 at C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Exception/ParseErrorException.php:44)
+[stacktrace]
+#0 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/CodeCleaner.php(657): Psy/Exception/ParseErrorException::fromParseError(Object(PhpParser/Error))
+#1 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/CodeCleaner.php(273): Psy/CodeCleaner->parse('<?php echo 'Use...', false)
+#2 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Shell.php(1364): Psy/CodeCleaner->clean(Array, false)
+#3 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Shell.php(1471): Psy/Shell->appendCode('echo 'Users: ' ...', true, false)
+#4 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/psy/psysh/src/Shell.php(2180): Psy/Shell->setCode('echo 'Users: ' ...', true)
+#5 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/tinker/src/Console/TinkerCommand.php(77): Psy/Shell->execute('echo 'Users: ' ...')
+#6 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): Laravel/Tinker/Console/TinkerCommand->handle()
+#7 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/Util.php(43): Illuminate/Container/BoundMethod::Illuminate/Container/{closure}()
+#8 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(95): Illuminate/Container/Util::unwrapIfClosure(Object(Closure))
+#9 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate/Container/BoundMethod::callBoundMethod(Object(Illuminate/Foundation/Application), Array, Object(Closure))
+#10 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Container/Container.php(696): Illuminate/Container/BoundMethod::call(Object(Illuminate/Foundation/Application), Array, Array, NULL)
+#11 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Console/Command.php(213): Illuminate/Container/Container->call(Array)
+#12 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Command/Command.php(341): Illuminate/Console/Command->execute(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#13 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Console/Command.php(182): Symfony/Component/Console/Command/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#14 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(1117): Illuminate/Console/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#15 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(356): Symfony/Component/Console/Application->doRunCommand(Object(Laravel/Tinker/Console/TinkerCommand), Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#16 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#17 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#18 C:/Users/mukuk/Documents/GitHub/pif-ehub/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#19 {main}
+"} 

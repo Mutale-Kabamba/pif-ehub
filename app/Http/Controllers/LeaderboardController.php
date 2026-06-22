@@ -19,18 +19,8 @@ class LeaderboardController extends Controller
     {
         $candidates = Candidate::all();
 
-        // 1. Explicit Male list provided by user
-        $maleNames = [
-            'Moffat Daka',
-            'Lawrence Pumulo',
-            'Charles Zulu',
-            'Bill Bishops Imonda',
-            'Peter Gabriel Simpyata',
-            'Rashid Nchimunya'
-        ];
-
-        // 2. Map evaluation arrays with metrics
-        $mappedCandidates = $candidates->map(function (Candidate $candidate) use ($maleNames) {
+        // 1. Map evaluation arrays with metrics
+        $mappedCandidates = $candidates->map(function (Candidate $candidate) {
             $literacyRecord = LiteracyScore::where('candidate_id', $candidate->id)->first();
             $literacyScore = $literacyRecord ? (float) $literacyRecord->total_score : 0;
             $assessmentDate = $literacyRecord ? $literacyRecord->assessment_date : null;
@@ -49,8 +39,8 @@ class LeaderboardController extends Controller
 
             $grandTotal = round($literacyScore + $interviewScore, 2);
 
-            // Segregate dynamically based on explicit male tracking list
-            $gender = in_array(trim($candidate->name), $maleNames) ? 'Male' : 'Female';
+            // Use gender stored in database (set during seeding)
+            $gender = $candidate->gender ?? 'Female';
 
             return [
                 'id'               => $candidate->id,
@@ -76,7 +66,7 @@ class LeaderboardController extends Controller
         };
 
         // 4. Filter and Rank Females (Top 7 Advance)
-        $females = $mappedCandidates->where('gender', 'Female')->sort($sortFunction)->values();
+        $females = $mappedCandidates->whereIn('gender', ['Female', 'female'])->sort($sortFunction)->values();
         $females = $females->map(function (array $entry, int $index) {
             $entry['rank'] = $index + 1;
             $entry['status'] = $entry['rank'] <= 7 ? 'ACCEPTED' : 'WAITLIST';

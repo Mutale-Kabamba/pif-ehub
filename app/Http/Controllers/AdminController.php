@@ -126,12 +126,21 @@ class AdminController extends Controller
 
         $tab = $request->query('tab', $user->isSuper() ? 'leaderboard' : 'panel');
 
+        // All candidates (used for literacy, leaderboard, etc.)
         $candidates = Candidate::orderBy('name')->get();
+
+        // Candidates filtered to the logged-in user's panel (for panel evaluation tab)
+        if ($user->panel && $user->panel !== 'cover') {
+            $panelCandidates = Candidate::where('panel', $user->panel)->orderBy('name')->get();
+        } else {
+            $panelCandidates = $candidates; // cover / no panel → see all
+        }
 
         $viewData = [
             'user'              => $user,
             'tab'               => $tab,
             'candidates'        => $candidates,
+            'panelCandidates'   => $panelCandidates,
             'quantQuestions'    => $this->quantQuestions,
             'qualQuestions'     => $this->qualQuestions,
             'literacyTasks'     => $this->literacyTasks,
