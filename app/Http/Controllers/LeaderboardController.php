@@ -25,7 +25,9 @@ class LeaderboardController extends Controller
             $literacyScore = $literacyRecord ? (float) $literacyRecord->total_score : 0;
             $assessmentDate = $literacyRecord ? $literacyRecord->assessment_date : null;
 
-            $panelScores = PanelScore::where('candidate_id', $candidate->id)->get();
+            $panelScores = PanelScore::where('candidate_id', $candidate->id)
+                ->where('is_valid', true)
+                ->get();
             $interviewScore = 0;
 
             if ($panelScores->isNotEmpty()) {

@@ -5,7 +5,7 @@
 </div>
 
 @if(isset($leaderboard) && ($leaderboard['females']->count() > 0 || $leaderboard['males']->count() > 0))
-    <a href="?tab=leaderboard&amp;format=csv" class="btn btn-primary export-btn" style="margin-bottom: 20px; display: inline-block;">
+    <a href="{{ route('admin.leaderboard', ['format' => 'csv']) }}" class="btn btn-primary export-btn" style="margin-bottom: 20px; display: inline-block;">
         📥 Export Separated Leaderboards CSV
     </a>
 
