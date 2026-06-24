@@ -41,10 +41,12 @@ return new class extends Migration
 
     public function up(): void
     {
-        // ── Step 1: Add the is_valid flag (all existing rows start as valid) ──
-        Schema::table('panel_scores', function (Blueprint $table) {
-            $table->boolean('is_valid')->default(true)->after('comments');
-        });
+        // ── Step 1: Add the is_valid flag (guard makes this idempotent) ───────
+        if (! Schema::hasColumn('panel_scores', 'is_valid')) {
+            Schema::table('panel_scores', function (Blueprint $table) {
+                $table->boolean('is_valid')->default(true)->after('comments');
+            });
+        }
 
         // ── Step 2: Invalidate scores for absent candidates ──────────────────
         $absentIds = DB::table('candidates')

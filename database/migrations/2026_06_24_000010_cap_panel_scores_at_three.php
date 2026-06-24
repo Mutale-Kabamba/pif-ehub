@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Supplementary cleanup migration.
@@ -28,6 +29,11 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Skip if is_valid column does not exist (migration 000009 not yet run)
+        if (! Schema::hasColumn('panel_scores', 'is_valid')) {
+            return;
+        }
+
         // ── Step 1: Invalidate all scores from cover-role users ───────────────
         $coverUserIds = DB::table('users')
             ->where('panel', 'cover')

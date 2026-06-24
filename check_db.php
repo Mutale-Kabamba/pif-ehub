@@ -3,33 +3,28 @@ require 'vendor/autoload.php';
 $app = require 'bootstrap/app.php';
 $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
-// Preview scoresheet output for Panel A
-$panelists = App\Models\User::whereIn('panel', ['A', 'B'])
-    ->orderBy('panel')->orderBy('panelist_name')->get();
+echo "=== User credential check ===" . PHP_EOL;
+$credentials = [
+    ['email' => 'super@pif.zm',      'password' => 'PIF_Admin_2026', 'login_as' => 'Mutale (Super User)'],
+    ['email' => 'blessing@pif.zm',   'password' => 'PIF_Ble_2026',  'login_as' => 'Blessing'],
+    ['email' => 'sarah@pif.zm',      'password' => 'PIF_Sar_2026',  'login_as' => 'Sarah'],
+    ['email' => 'bracious@pif.zm',   'password' => 'PIF_Bra_2026',  'login_as' => 'Bracious'],
+    ['email' => 'jacqueline@pif.zm', 'password' => 'PIF_Jac_2026',  'login_as' => 'Jacqueline'],
+    ['email' => 'florence@pif.zm',   'password' => 'PIF_Flo_2026',  'login_as' => 'Florence'],
+    ['email' => 'mwiinga@pif.zm',    'password' => 'PIF_Mwi_2026',  'login_as' => 'Mwiinga'],
+];
 
-foreach ($panelists as $panelist) {
-    echo PHP_EOL . "=== Panelist: {$panelist->panelist_name} (Panel {$panelist->panel}) ===" . PHP_EOL;
-    printf("%-32s  %3s %3s %3s %3s  %5s  %s\n", 'Candidate', 'Mot', 'Ava', 'Res', 'Com', 'Total', 'Status');
-    echo str_repeat('-', 72) . PHP_EOL;
-
-    $candidates  = App\Models\Candidate::where('panel', $panelist->panel)->orderBy('name')->get();
-    $validScores = App\Models\PanelScore::where('panelist_id', $panelist->id)
-        ->where('is_valid', 1)->get()->keyBy('candidate_id');
-    $grandTotal  = 0;
-
-    foreach ($candidates as $c) {
-        $s = $validScores->get($c->id);
-        if ($s) {
-            $t = $s->crit1_motivation + $s->crit2_availability + $s->crit3_resilience + $s->crit4_communication;
-            $grandTotal += $t;
-            printf("%-32s  %3d %3d %3d %3d  %5d  Scored\n",
-                $c->name, $s->crit1_motivation, $s->crit2_availability,
-                $s->crit3_resilience, $s->crit4_communication, $t);
-        } else {
-            printf("%-32s  %3s %3s %3s %3s  %5s  DID NOT ATTEND\n",
-                $c->name, '—', '—', '—', '—', '—');
-        }
+foreach ($credentials as $c) {
+    $user = Illuminate\Support\Facades\DB::table('users')->where('email', $c['email'])->first();
+    if (!$user) {
+        printf("%-30s  %-12s  %s\n", $c['login_as'], 'MISSING', 'User not in DB');
+        continue;
     }
-    echo str_repeat('-', 72) . PHP_EOL;
-    printf("%-32s  %3s %3s %3s %3s  %5d\n", 'PANELIST TOTAL', '', '', '', '', $grandTotal);
+    $ok = Illuminate\Support\Facades\Hash::check($c['password'], $user->password);
+    printf("%-30s  %-12s  pw_len=%-5d  %s\n",
+        $c['login_as'],
+        $ok ? 'LOGIN OK' : 'FAIL',
+        strlen($user->password),
+        $ok ? '' : 'password mismatch'
+    );
 }

@@ -391,3 +391,9 @@ Did you mean one of these?
 #18 C:/Users/mukuk/Documents/GitHub/pif-ehub/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
 #19 {main}
 "} 
+[2026-06-24 09:34:41] production.ERROR: Undefined variable $panelists {"exception":"[object] (ErrorException(code: 0): Undefined variable $panelists at C:/Users/mukuk/Documents/GitHub/pif-ehub/check_db.php:32)
+[stacktrace]
+#0 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/HandleExceptions.php(258): Illuminate/Foundation/Bootstrap/HandleExceptions->handleError(2, 'Undefined varia...', 'C://Users//mukuk//...', 32)
+#1 C:/Users/mukuk/Documents/GitHub/pif-ehub/check_db.php(32): Illuminate/Foundation/Bootstrap/HandleExceptions->Illuminate/Foundation/Bootstrap/{closure}(2, 'Undefined varia...', 'C://Users//mukuk//...', 32)
+#2 {main}
+"} 

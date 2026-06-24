@@ -7,6 +7,7 @@ use App\Models\LiteracyScore;
 use App\Models\PanelScore;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeaderboardController extends Controller
@@ -20,14 +21,18 @@ class LeaderboardController extends Controller
         $candidates = Candidate::all();
 
         // 1. Map evaluation arrays with metrics
-        $mappedCandidates = $candidates->map(function (Candidate $candidate) {
+        $hasIsValid = Schema::hasColumn('panel_scores', 'is_valid');
+
+        $mappedCandidates = $candidates->map(function (Candidate $candidate) use ($hasIsValid) {
             $literacyRecord = LiteracyScore::where('candidate_id', $candidate->id)->first();
             $literacyScore = $literacyRecord ? (float) $literacyRecord->total_score : 0;
             $assessmentDate = $literacyRecord ? $literacyRecord->assessment_date : null;
 
-            $panelScores = PanelScore::where('candidate_id', $candidate->id)
-                ->where('is_valid', true)
-                ->get();
+            $scoreQuery = PanelScore::where('candidate_id', $candidate->id);
+            if ($hasIsValid) {
+                $scoreQuery->where('is_valid', true);
+            }
+            $panelScores = $scoreQuery->get();
             $interviewScore = 0;
 
             if ($panelScores->isNotEmpty()) {
@@ -185,7 +190,9 @@ class LeaderboardController extends Controller
             ->orderBy('panelist_name')
             ->get();
 
-        return response()->stream(function () use ($panelists, $rankMap) {
+        $hasIsValid = Schema::hasColumn('panel_scores', 'is_valid');
+
+        return response()->stream(function () use ($panelists, $rankMap, $hasIsValid) {
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, ['PANELIST INTERVIEW SCORE SHEETS']);
@@ -221,10 +228,11 @@ class LeaderboardController extends Controller
                     ->get();
 
                 // Index this panelist's valid scores by candidate_id for fast lookup
-                $validScores = \App\Models\PanelScore::where('panelist_id', $panelist->id)
-                    ->where('is_valid', true)
-                    ->get()
-                    ->keyBy('candidate_id');
+                $scoreQuery = \App\Models\PanelScore::where('panelist_id', $panelist->id);
+                if ($hasIsValid) {
+                    $scoreQuery->where('is_valid', true);
+                }
+                $validScores = $scoreQuery->get()->keyBy('candidate_id');
 
                 $grandTotal = 0;
 
