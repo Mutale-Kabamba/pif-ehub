@@ -8,6 +8,10 @@
     <a href="{{ route('admin.leaderboard', ['format' => 'csv']) }}" class="btn btn-primary export-btn" style="margin-bottom: 20px; display: inline-block;">
         📥 Export Separated Leaderboards CSV
     </a>
+    &nbsp;
+    <a href="{{ route('admin.scoresheet') }}" class="btn btn-primary export-btn" style="margin-bottom: 20px; display: inline-block; background:#1565c0;">
+        📋 Download Panelist Score Sheets CSV
+    </a>
 
     <div style="margin-bottom: 40px;">
         <h4 style="color: #d81b60; margin-bottom: 12px; font-weight: 600;">👩‍🦰 Female Selection Track (Top 7 Advance)</h4>

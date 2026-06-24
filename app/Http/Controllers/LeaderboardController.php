@@ -152,4 +152,127 @@ class LeaderboardController extends Controller
             fclose($handle);
         }, 200, $headers);
     }
+
+    /**
+     * Export individual panelist score sheets as a CSV download.
+     *
+     * Columns per panelist section:
+     *   Rank | Candidate | Motivation /5 | Availability /5 | Resilience /5 | Communication /5 | Total /20 | Comments
+     *
+     * Panelists are grouped by panel (A then B) and sorted by name within each panel.
+     * Within each candidate row, panelist scores are shown individually (not averaged).
+     */
+    public function scoresheetCsv(Request $request): StreamedResponse
+    {
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="panelist_score_sheets.csv"',
+        ];
+
+        // Pre-build leaderboard rank maps so we can show candidate rank per gender track
+        $leaderboard = self::getLeaderboardData();
+        $rankMap = [];
+        foreach ($leaderboard['females'] as $entry) {
+            $rankMap[$entry['id']] = '#' . $entry['rank'] . ' (' . $entry['status'] . ')';
+        }
+        foreach ($leaderboard['males'] as $entry) {
+            $rankMap[$entry['id']] = '#' . $entry['rank'] . ' (' . $entry['status'] . ')';
+        }
+
+        // Load all panelists that belong to a real panel (A or B), ordered by panel then name
+        $panelists = \App\Models\User::whereIn('panel', ['A', 'B'])
+            ->orderBy('panel')
+            ->orderBy('panelist_name')
+            ->get();
+
+        return response()->stream(function () use ($panelists, $rankMap) {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, ['PANELIST INTERVIEW SCORE SHEETS']);
+            fputcsv($handle, ['Generated: ' . now()->format('Y-m-d H:i')]);
+            fputcsv($handle, []);
+
+            $currentPanel = null;
+
+            foreach ($panelists as $panelist) {
+                // Print panel header when panel changes
+                if ($panelist->panel !== $currentPanel) {
+                    $currentPanel = $panelist->panel;
+                    fputcsv($handle, []);
+                    fputcsv($handle, ['══ PANEL ' . $currentPanel . ' ══']);
+                    fputcsv($handle, []);
+                }
+
+                fputcsv($handle, ['Panelist: ' . $panelist->panelist_name . '  (Panel ' . $panelist->panel . ')']);
+                fputcsv($handle, [
+                    'Leaderboard Rank',
+                    'Candidate Name',
+                    'Motivation (/5)',
+                    'Availability (/5)',
+                    'Resilience (/5)',
+                    'Communication (/5)',
+                    'Interview Total (/20)',
+                    'Comments',
+                ]);
+
+                // All candidates assigned to this panelist's panel, sorted by name
+                $candidates = \App\Models\Candidate::where('panel', $panelist->panel)
+                    ->orderBy('name')
+                    ->get();
+
+                // Index this panelist's valid scores by candidate_id for fast lookup
+                $validScores = \App\Models\PanelScore::where('panelist_id', $panelist->id)
+                    ->where('is_valid', true)
+                    ->get()
+                    ->keyBy('candidate_id');
+
+                $grandTotal = 0;
+
+                foreach ($candidates as $candidate) {
+                    $score = $validScores->get($candidate->id);
+
+                    if ($score) {
+                        // Candidate was present and scored
+                        $total       = $score->crit1_motivation
+                                     + $score->crit2_availability
+                                     + $score->crit3_resilience
+                                     + $score->crit4_communication;
+                        $grandTotal += $total;
+
+                        fputcsv($handle, [
+                            $rankMap[$candidate->id] ?? 'N/A',
+                            $candidate->name,
+                            $score->crit1_motivation,
+                            $score->crit2_availability,
+                            $score->crit3_resilience,
+                            $score->crit4_communication,
+                            $total,
+                            $score->comments ?? '',
+                        ]);
+                    } else {
+                        // Candidate did not attend — scores were invalidated
+                        fputcsv($handle, [
+                            $rankMap[$candidate->id] ?? 'N/A',
+                            $candidate->name,
+                            '—',
+                            '—',
+                            '—',
+                            '—',
+                            'DID NOT ATTEND',
+                            '',
+                        ]);
+                    }
+                }
+
+                // Totals row (only counts attended candidates)
+                fputcsv($handle, [
+                    '', 'PANELIST TOTAL (attended candidates only)', '', '', '', '', $grandTotal, '',
+                ]);
+
+                fputcsv($handle, []);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
+    }
 }
