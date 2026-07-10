@@ -21,6 +21,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/leaderboard', [LeaderboardController::class, 'index'])->name('admin.leaderboard');
     Route::get('/admin/scoresheet', [LeaderboardController::class, 'scoresheetCsv'])->name('admin.scoresheet');
     Route::get('/admin/analytics', [AdminController::class, 'analytics'])->name('admin.analytics');
+    Route::get('/admin/survey-export', [AdminController::class, 'exportSurveyCsv'])->name('admin.survey.export');
     Route::get('/admin/literacy', [AdminController::class, 'literacyForm'])->name('admin.literacy');
     Route::post('/admin/literacy', [AdminController::class, 'literacyStore'])->name('admin.literacy.store');
     Route::get('/admin/panel', [PanelistController::class, 'index'])->name('admin.panel');

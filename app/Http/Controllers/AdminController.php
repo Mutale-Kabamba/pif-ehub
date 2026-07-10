@@ -212,6 +212,68 @@ class AdminController extends Controller
     }
 
     /**
+     * Export survey responses as CSV.
+     */
+    public function exportSurveyCsv(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        /** @var User|null $user */
+        $user = User::find($request->session()->get('admin_user_id'));
+
+        if ($user === null || ! $user->isSuper()) {
+            abort(403, 'Only super users can export survey results.');
+        }
+
+        $filename = 'survey-results-' . now()->format('Ymd-His') . '.csv';
+
+        $quantKeys = array_keys($this->quantQuestions);
+        $qualKeys  = array_keys($this->qualQuestions);
+
+        return response()->streamDownload(function () use ($quantKeys, $qualKeys): void {
+            $out = fopen('php://output', 'w');
+
+            if ($out === false) {
+                return;
+            }
+
+            $header = array_merge([
+                'id',
+                'survey_type',
+            ], $quantKeys, $qualKeys, [
+                'submitted_at',
+            ]);
+
+            fputcsv($out, $header);
+
+            SurveyResponse::query()
+                ->orderBy('id')
+                ->chunk(500, function ($responses) use ($out, $quantKeys, $qualKeys): void {
+                    foreach ($responses as $response) {
+                        $row = [
+                            $response->id,
+                            $response->survey_type,
+                        ];
+
+                        foreach ($quantKeys as $key) {
+                            $row[] = $response->{$key};
+                        }
+
+                        foreach ($qualKeys as $key) {
+                            $row[] = $response->{$key};
+                        }
+
+                        $row[] = optional($response->created_at)->toDateTimeString();
+
+                        fputcsv($out, $row);
+                    }
+                });
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
      * Show the literacy assessment form (redirects to dashboard with tab).
      */
     public function literacyForm(): \Illuminate\Http\RedirectResponse
