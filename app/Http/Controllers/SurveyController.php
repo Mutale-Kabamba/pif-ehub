@@ -21,17 +21,17 @@ class SurveyController extends Controller
         'q8_troubleshooting'     => "I can independently find solutions to technical errors by reading documentation, watching tutorials, testing different approaches, and knowing when to ask for help online.",
         'q9_freelance'           => "I feel equipped to write professional project proposals, estimate timelines, manage client expectations, and deliver web development or design work as a freelancer.",
         'q10_livingstone_tourism' => "I can easily identify real-world business bottlenecks in Livingstone's tourism and digital service sectors and propose practical, tech-driven solutions to improve efficiency.",
-        'q11_career_efficacy'    => "I feel confident that the digital and administrative skills I am gaining in this programme will make me competitive for remote online work and local tech-enabled jobs.",
+        'q11_career_efficacy'    => "I feel confident that the digital and administrative skills I am gaining in this project will make me competitive for remote online work and local tech-enabled jobs.",
     ];
 
     /**
      * Qualitative survey questions (key => label).
      */
     private static array $qualQuestions = [
-        'qual1_why_join'       => "Why did you decide to join this programme? What do you hope to achieve by the end of it?",
-        'qual2_skills_hoped'   => "What skills or knowledge are you hoping to gain from this training? Be as specific as possible.",
-        'qual3_success_criteria' => "At the end of this programme, what would make you feel it was successful for you personally?",
-        'qual4_challenges'     => "What challenges do you anticipate might make it harder for you to complete this programme? How do you plan to overcome them?",
+        'qual1_why_join'       => "Why did you decide to join this project? What do you hope to achieve by the end of it?",
+        'qual2_skills_hoped'   => "What skills or knowledge are you hoping to gain from this training, and what kind of project would you like to build during the project? Be as specific as possible.",
+        'qual3_success_criteria' => "At the end of this project, what would make you feel it was successful for you personally?",
+        'qual4_challenges'     => "What challenges do you anticipate might make it harder for you to complete this project? How do you plan to overcome them?",
     ];
 
     /**

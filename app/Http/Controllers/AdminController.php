@@ -27,9 +27,9 @@ class AdminController extends Controller
     ];
 
     private array $qualQuestions = [
-        'qual1_why_join'       => "Why did you decide to join this programme?",
-        'qual2_skills_hoped'   => "What skills or knowledge are you hoping to gain...",
-        'qual3_success_criteria' => "At the end of this programme, what would make you...",
+        'qual1_why_join'       => "Why did you decide to join this project?",
+        'qual2_skills_hoped'   => "What skills or knowledge are you hoping to gain, and what kind of project would you like to build during this project?",
+        'qual3_success_criteria' => "At the end of this project, what would make you...",
         'qual4_challenges'     => "What challenges do you anticipate might make it...",
     ];
 

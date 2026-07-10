@@ -53,22 +53,6 @@
         <strong>5:</strong> Strongly Agree
     </div>
 
-    <?php
-        $quantQuestions = [
-            'q1_os_filemgmt' => "I can independently manage digital file directories, organize files, and troubleshoot basic computer system errors.",
-            'q2_spreadsheets' => "I feel confident using spreadsheet software (like MS Excel) to structure data, write formulas, and build visual charts to analyze business metrics.",
-            'q3_ux_design' => "I can translate a product idea into user-friendly digital wireframes and visual designs using modern design tools like Figma.",
-            'q4_frontend' => "I am confident in my ability to write clean, semantic HTML and CSS code to build a responsive, mobile-friendly webpage.",
-            'q5_js_logic' => "I feel capable of writing custom JavaScript logic (using loops, arrays, and functions) to make a website dynamic and interactive.",
-            'q6_fullstack' => "I understand how back-end servers, databases, and APIs connect to safely handle secure user logins and persistent data storage.",
-            'q7_resilience' => "When my design or code fails to work, I view it as an expected part of the learning process.",
-            'q8_troubleshooting' => "I can independently find solutions to technical errors by searching online, reading developer documentation, and experimenting with my code.",
-            'q9_freelance' => "I feel equipped to write professional project proposals, estimate developmental hourly rates, and pitch my services on freelance platforms.",
-            'q10_livingstone_tourism' => "I can easily identify real-world business bottlenecks within Livingstone's tourism, craft, or commercial sectors that can be solved using digital products.",
-            'q11_career_efficacy' => "I feel confident that the digital and administrative skills I am learning will enable me to secure a technical job, freelance work, or launch an enterprise."
-        ];
-    ?>
-
     <?php $__currentLoopData = $quantQuestions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $question): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
         <div class="question-block">
             <p><?php echo e($loop->iteration); ?>. <?php echo e($question); ?></p>
@@ -87,15 +71,6 @@
     <hr class="section-divider">
 
     <h3>Part 2: Qualitative Insight Responses</h3>
-
-    <?php
-        $qualQuestions = [
-            'qual1_why_join' => "Why did you decide to join this programme?",
-            'qual2_skills_hoped' => "What skills or knowledge are you hoping to gain through this programme?",
-            'qual3_success_criteria' => "At the end of this programme, what would make you say that your participation was successful?",
-            'qual4_challenges' => "What challenges do you anticipate might make it difficult for you to complete this programme successfully?"
-        ];
-    ?>
 
     <?php $__currentLoopData = $qualQuestions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $question): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
         <div class="form-group question-block">
