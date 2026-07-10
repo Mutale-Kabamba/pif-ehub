@@ -5,8 +5,12 @@
 </div>
 
 <?php if(isset($leaderboard) && ($leaderboard['females']->count() > 0 || $leaderboard['males']->count() > 0)): ?>
-    <a href="?tab=leaderboard&amp;format=csv" class="btn btn-primary export-btn" style="margin-bottom: 20px; display: inline-block;">
+    <a href="<?php echo e(route('admin.leaderboard', ['format' => 'csv'])); ?>" class="btn btn-primary export-btn" style="margin-bottom: 20px; display: inline-block;">
         📥 Export Separated Leaderboards CSV
+    </a>
+    &nbsp;
+    <a href="<?php echo e(route('admin.scoresheet')); ?>" class="btn btn-primary export-btn" style="margin-bottom: 20px; display: inline-block; background:#1565c0;">
+        📋 Download Panelist Score Sheets CSV
     </a>
 
     <div style="margin-bottom: 40px;">

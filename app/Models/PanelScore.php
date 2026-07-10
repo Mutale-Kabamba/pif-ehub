@@ -23,6 +23,7 @@ class PanelScore extends Model
         'crit3_resilience',
         'crit4_communication',
         'comments',
+        'is_valid',
     ];
 
     /**
