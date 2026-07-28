@@ -2,13 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Assessment;
+use App\Models\EvaluationScore;
+use App\Models\Question;
 use App\Models\SurveyResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class SurveyController extends Controller
 {
     /**
-     * Quantitative survey questions (key => label).
+     * Quantitative survey questions (baseline static questions).
      */
     private static array $quantQuestions = [
         'q1_os_filemgmt'         => "I can independently manage digital file directories (create folders, move files, copy/paste, delete, and rename files) on a Windows computer without supervision.",
@@ -25,7 +31,7 @@ class SurveyController extends Controller
     ];
 
     /**
-     * Qualitative survey questions (key => label).
+     * Qualitative survey questions.
      */
     private static array $qualQuestions = [
         'qual1_why_join'       => "Why did you decide to join this training? What do you hope to achieve by the end of it?",
@@ -35,20 +41,119 @@ class SurveyController extends Controller
     ];
 
     /**
-     * Display the survey form.
+     * Render the Landing Page (Dual section: Auth Login & Survey Portal CTA).
      */
-    public function index(): \Illuminate\View\View
+    public function landing(): View
     {
-        return view('survey.index', [
+        return view('landing');
+    }
+
+    /**
+     * Display Public Survey Gallery (Card listing of active surveys & assessments).
+     */
+    public function index(): View
+    {
+        $surveys = Assessment::where('status', 'active')
+            ->whereIn('type', ['survey', 'assessment', 'interview'])
+            ->withCount('questions')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('survey.gallery', [
+            'surveys' => $surveys,
             'quantQuestions' => self::$quantQuestions,
-            'qualQuestions'  => self::$qualQuestions,
+            'qualQuestions' => self::$qualQuestions,
         ]);
     }
 
     /**
-     * Store a newly submitted survey response.
+     * Verify Survey Access Key submitted by user via modal or form input.
      */
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function verifyKey(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'access_key' => 'required|string',
+            'assessment_id' => 'required|exists:assessments,id',
+        ]);
+
+        $assessment = Assessment::where('id', $validated['assessment_id'])
+            ->where('status', 'active')
+            ->firstOrFail();
+
+        $inputKey = strtoupper(trim($validated['access_key']));
+        $targetKey = strtoupper(trim($assessment->access_key));
+
+        if ($inputKey !== $targetKey) {
+            return redirect()->back()
+                ->with('key_error', 'Invalid Access Key for ' . $assessment->title . '. Please try again.')
+                ->with('target_assessment_id', $assessment->id);
+        }
+
+        // Store unlocked assessment ID in session
+        $unlocked = session()->get('unlocked_assessments', []);
+        $unlocked[] = $assessment->id;
+        session()->put('unlocked_assessments', array_unique($unlocked));
+
+        return redirect()->route('surveys.take', $assessment->id)
+            ->with('success', 'Access granted! Please complete the survey below.');
+    }
+
+    /**
+     * Render dynamic survey questionnaire for an unlocked assessment.
+     */
+    public function take(Assessment $assessment): View|RedirectResponse
+    {
+        if ($assessment->status !== 'active') {
+            return redirect()->route('surveys.index')
+                ->with('error', 'This assessment is currently inactive.');
+        }
+
+        // Check if access key is unlocked in session
+        $unlocked = session()->get('unlocked_assessments', []);
+        if (! in_array($assessment->id, $unlocked) && $assessment->access_key) {
+            return redirect()->route('surveys.index')
+                ->with('key_error', 'Please enter the access key to open ' . $assessment->title . '.')
+                ->with('target_assessment_id', $assessment->id);
+        }
+
+        $assessment->load(['questions.options']);
+
+        return view('survey.take', compact('assessment'));
+    }
+
+    /**
+     * Process dynamic survey response submission.
+     */
+    public function submit(Request $request, Assessment $assessment): RedirectResponse
+    {
+        $validated = $request->validate([
+            'respondent_name' => 'nullable|string|max:255',
+            'scores' => 'required|array',
+            'scores.*.question_id' => 'required|exists:questions,id',
+            'scores.*.score' => 'nullable|numeric',
+            'scores.*.text_response' => 'nullable|string',
+        ]);
+
+        DB::transaction(function () use ($validated, $assessment) {
+            foreach ($validated['scores'] as $qScore) {
+                EvaluationScore::create([
+                    'assessment_id' => $assessment->id,
+                    'evaluator_id' => auth()->id() ?: session('admin_user_id'),
+                    'question_id' => $qScore['question_id'],
+                    'score' => isset($qScore['score']) ? (float) $qScore['score'] : null,
+                    'text_response' => $qScore['text_response'] ?? null,
+                ]);
+            }
+        });
+
+        return redirect()->route('surveys.index')
+            ->with('success', 'Thank you! Your survey responses for "' . $assessment->title . '" have been submitted successfully.');
+    }
+
+    /**
+     * Store a newly submitted legacy baseline/endline survey response.
+     */
+    public function store(Request $request): RedirectResponse
     {
         $quantRules = [];
         foreach (array_keys(self::$quantQuestions) as $key) {
@@ -66,8 +171,7 @@ class SurveyController extends Controller
 
         SurveyResponse::create($validated);
 
-        return redirect()
-            ->back()
+        return redirect()->back()
             ->with('success', 'Thank you! Your survey response has been submitted successfully.');
     }
 }

@@ -84,6 +84,16 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Guard: skip entirely if panel_scores already contains real data.
+        // This prevents overwriting live panelist scores on every redeploy.
+        $existingCount = DB::table('panel_scores')
+            ->where('is_valid', true)
+            ->count();
+
+        if ($existingCount > 0) {
+            return;
+        }
+
         $now = now();
 
         // Build lookup maps so we avoid N+1 queries

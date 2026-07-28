@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
@@ -86,5 +87,32 @@ class User extends Authenticatable
     public function panelScores(): HasMany
     {
         return $this->hasMany(PanelScore::class, 'panelist_id');
+    }
+
+    /**
+     * Get assessment assignments where this user is a panelist.
+     */
+    public function assessmentAssignments(): HasMany
+    {
+        return $this->hasMany(AssessmentAssignment::class);
+    }
+
+    /**
+     * Get assessments assigned to this panelist.
+     */
+    public function assignedAssessments(): BelongsToMany
+    {
+        return $this->belongsToMany(Assessment::class, 'assessment_assignments', 'user_id', 'assessment_id')
+            ->wherePivot('role', 'panelist')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    /**
+     * Get evaluation scores submitted by this user.
+     */
+    public function evaluationScoresGiven(): HasMany
+    {
+        return $this->hasMany(EvaluationScore::class, 'evaluator_id');
     }
 }
