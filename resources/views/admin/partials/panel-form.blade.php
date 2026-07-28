@@ -17,8 +17,8 @@
 </div>
 
 <div class="info-box" style="margin-bottom:24px;">
-    Interviews are <strong>20 minutes</strong> each. Select a candidate to begin. You will be prompted to confirm
-    before the timer starts. A windup alert appears at <strong>5&nbsp;minutes remaining</strong>.
+    Select a candidate to begin their interview. When you are done, click <strong>End Interview</strong> to submit
+    your evaluation and move on to the next candidate.
 </div>
 
 @if(session('success'))
@@ -50,7 +50,7 @@
         <div style="font-size:2.5rem; margin-bottom:12px;">&#x23F1;&#xFE0F;</div>
         <h3 style="margin:0 0 8px; font-size:1.25rem;">Start Interview?</h3>
         <p style="color:#555; margin-bottom:24px; line-height:1.5;">
-            You are about to start a <strong>20-minute interview</strong> with:<br>
+            You are about to start an interview with:<br>
             <strong id="modal-candidate-name" style="color:#1A7F4F; font-size:1.1rem;"></strong>
         </p>
         <div style="display:flex; gap:12px; justify-content:center;">
@@ -228,11 +228,8 @@
     const evalWrap       = document.getElementById('eval-form-wrap');
     const formCandidateId = document.getElementById('form-candidate-id');
 
-    // ── Restore any active session from localStorage ──────────
-    const saved = loadTimerState();
-    if (saved && saved.endTime > Date.now()) {
-        restoreTimer(saved);
-    }
+    // ── Clear any stale timer state on load (no auto-restore) ──
+    clearTimerState();
 
     // ── Candidate picker → show confirmation modal ────────────
     picker.addEventListener('change', function () {
@@ -340,10 +337,18 @@
         if (!confirm('End this interview session?')) return;
         clearInterval(timerInterval);
         timerInterval = null;
-        timerBlock.style.display   = 'none';
-        windupBanner.style.display = 'none';
+        timerBlock.style.display    = 'none';
+        windupBanner.style.display  = 'none';
         expiredBanner.style.display = 'none';
-        picker.value = '';
+        evalWrap.style.display      = 'none';
+        formCandidateId.value       = '';
+        countdownEl.textContent     = '00:00';
+        countdownEl.className       = '';
+        progressBar.style.width     = '100%';
+        progressBar.style.background = '#1A7F4F';
+        picker.value                = '';
+        selectedId                  = null;
+        selectedName                = '';
         clearTimerState();
     };
 
