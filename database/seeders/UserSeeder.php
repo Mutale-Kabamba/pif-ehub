@@ -12,11 +12,10 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Remove stale users from old seeders (keep only the ones we define below)
-        User::whereNotIn('email', [
-            'super@pif.zm', 'mwiinga@pif.zm', 'sarah@pif.zm', 'bracious@pif.zm',
-            'blessing@pif.zm', 'jacqueline@pif.zm', 'florence@pif.zm',
-        ])->delete();
+        // Guard: skip if users already exist — preserves live accounts on redeploy.
+        if (User::count() > 0) {
+            return;
+        }
 
         // 1. Super User — Mutale is also a Panel B judge
         User::updateOrCreate(

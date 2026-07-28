@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use App\Models\Candidate;
 
 class CandidateSeeder extends Seeder
@@ -13,10 +12,10 @@ class CandidateSeeder extends Seeder
      */
     public function run(): void
     {
-        // Disable FK checks, truncate, then re-enable so we start clean
-        DB::statement('PRAGMA foreign_keys = OFF');
-        Candidate::truncate();
-        DB::statement('PRAGMA foreign_keys = ON');
+        // Guard: skip if candidates already exist — never wipe live data on redeploy.
+        if (Candidate::count() > 0) {
+            return;
+        }
 
         // Panel A candidates (Judges: Blessing, Sara, Bracious)
         $panelA = [

@@ -41,6 +41,11 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Guard: skip if candidates already exist — preserves live data on redeploy.
+        if (DB::table('candidates')->count() > 0) {
+            return;
+        }
+
         $now = now();
 
         foreach ($this->panelA as $row) {
