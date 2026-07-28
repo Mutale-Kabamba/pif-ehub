@@ -420,3 +420,16 @@ Did you mean one of these?
 #18 C:/Users/mukuk/Documents/GitHub/pif-ehub/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
 #19 {main}
 "} 
+[2026-07-28 13:30:40] production.ERROR: Class "App\Providers\ServiceProvider" not found {"exception":"[object] (Error(code: 0): Class \"App\\Providers\\ServiceProvider\" not found at C:/Users/mukuk/Documents/GitHub/pif-ehub/app/Providers/AppServiceProvider.php:7)
+[stacktrace]
+#0 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/composer/ClassLoader.php(576): include()
+#1 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/composer/ClassLoader.php(427): Composer/Autoload/{closure}('C://Users//mukuk//...')
+#2 [internal function]: Composer/Autoload/ClassLoader->loadClass('App//Providers//A...')
+#3 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/RegisterProviders.php(52): class_exists('App//Providers//A...')
+#4 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Bootstrap/RegisterProviders.php(34): Illuminate/Foundation/Bootstrap/RegisterProviders->mergeAdditionalProviders(Object(Illuminate/Foundation/Application))
+#5 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(342): Illuminate/Foundation/Bootstrap/RegisterProviders->bootstrap(Object(Illuminate/Foundation/Application))
+#6 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(474): Illuminate/Foundation/Application->bootstrapWith(Array)
+#7 C:/Users/mukuk/Documents/GitHub/pif-ehub/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(196): Illuminate/Foundation/Console/Kernel->bootstrap()
+#8 C:/Users/mukuk/Documents/GitHub/pif-ehub/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#9 {main}
+"} 
