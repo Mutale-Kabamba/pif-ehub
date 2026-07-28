@@ -98,6 +98,7 @@ class AdminController extends Controller
         }
 
         $request->session()->put('admin_user_id', $user->id);
+        auth()->login($user);
 
         return redirect()
             ->route('admin.dashboard')
@@ -110,6 +111,7 @@ class AdminController extends Controller
     public function logout(Request $request): \Illuminate\Http\RedirectResponse
     {
         $request->session()->forget('admin_user_id');
+        auth()->logout();
 
         return redirect()
             ->route('admin.login')
