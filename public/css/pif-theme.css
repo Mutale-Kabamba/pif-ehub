@@ -7,7 +7,7 @@
     padding: 0;
     box-sizing: border-box;
 }
-
+/* === VARIABLES === */
 :root {
     --green-primary:   #59B33F;
     --green-dark:      #3d8a28;
