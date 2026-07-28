@@ -99,7 +99,7 @@
         </div>
 
         <div>
-            <button id="stop-timer-btn" class="btn btn-secondary" style="font-size:0.85rem; padding:8px 16px;"
+            <button id="stop-timer-btn" type="button" class="btn btn-secondary" style="font-size:0.85rem; padding:8px 16px;"
                     onclick="stopInterview()">
                 &#x23F9;&#xFE0F; End Interview
             </button>
