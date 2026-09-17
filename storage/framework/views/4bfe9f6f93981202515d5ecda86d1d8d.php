@@ -1,3 +1,5 @@
+
+
 <?php $__env->startSection('title', 'Admin Login'); ?>
 
 <?php $__env->startSection('content'); ?>
@@ -33,10 +35,9 @@
                 <label for="role">Select Role</label>
                 <select name="role" id="role" class="form-control" required>
                     <option value="">-- Select System Entity --</option>
-                    <option value="Super User">Super User</option>
+                    <option value="Super User">Mutale</option>
                     <option value="Sarah">Sarah</option>
                     <option value="Bracious">Bracious</option>
-                    <option value="Mutale">Mutale</option>
                     <option value="Blessing">Blessing</option>
                     <option value="Mwiinga">Mwiinga</option>
                     <option value="Jacqueline">Jacqueline</option>
