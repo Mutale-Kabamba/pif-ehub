@@ -18,6 +18,8 @@ class Candidate extends Model
      */
     protected $fillable = [
         'name',
+        'panel',
+        'gender',
     ];
 
     /**

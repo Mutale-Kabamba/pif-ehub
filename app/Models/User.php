@@ -21,6 +21,7 @@ class User extends Authenticatable
         'password',
         'role',
         'panelist_name',
+        'panel',
     ];
 
     /**
@@ -56,6 +57,27 @@ class User extends Authenticatable
     public function isPanelist(): bool
     {
         return $this->role === 'panelist';
+    }
+
+    /**
+     * Check if the user is a cover (observer/coordinator).
+     */
+    public function isCover(): bool
+    {
+        return $this->panel === 'cover';
+    }
+
+    /**
+     * Get the panel label for display.
+     */
+    public function panelLabel(): string
+    {
+        return match($this->panel) {
+            'A'     => 'Panel A',
+            'B'     => 'Panel B',
+            'cover' => 'Cover',
+            default => 'All Panels',
+        };
     }
 
     /**

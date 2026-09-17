@@ -27,9 +27,9 @@ class AdminController extends Controller
     ];
 
     private array $qualQuestions = [
-        'qual1_why_join'       => "Why did you decide to join this programme?",
-        'qual2_skills_hoped'   => "What skills or knowledge are you hoping to gain...",
-        'qual3_success_criteria' => "At the end of this programme, what would make you...",
+        'qual1_why_join'       => "Why did you decide to join this training?",
+        'qual2_skills_hoped'   => "What skills or knowledge are you hoping to gain during this training?",
+        'qual3_success_criteria' => "At the end of this training, what would make you...",
         'qual4_challenges'     => "What challenges do you anticipate might make it...",
     ];
 
@@ -126,12 +126,21 @@ class AdminController extends Controller
 
         $tab = $request->query('tab', $user->isSuper() ? 'leaderboard' : 'panel');
 
+        // All candidates (used for literacy, leaderboard, etc.)
         $candidates = Candidate::orderBy('name')->get();
+
+        // Candidates filtered to the logged-in user's panel (for panel evaluation tab)
+        if ($user->panel && $user->panel !== 'cover') {
+            $panelCandidates = Candidate::where('panel', $user->panel)->orderBy('name')->get();
+        } else {
+            $panelCandidates = $candidates; // cover / no panel → see all
+        }
 
         $viewData = [
             'user'              => $user,
             'tab'               => $tab,
             'candidates'        => $candidates,
+            'panelCandidates'   => $panelCandidates,
             'quantQuestions'    => $this->quantQuestions,
             'qualQuestions'     => $this->qualQuestions,
             'literacyTasks'     => $this->literacyTasks,

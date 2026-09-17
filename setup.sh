@@ -50,6 +50,10 @@ php artisan key:generate --ansi
 echo "[7/7] Running post-install scripts..."
 composer dump-autoload --optimize
 
+# Step 8: Run database migrations
+echo "[8/8] Running database migrations..."
+php artisan migrate --force
+
 echo ""
 echo "========================================="
 echo "  Setup Complete!"
