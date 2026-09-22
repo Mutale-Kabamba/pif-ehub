@@ -17,11 +17,26 @@ class PanelistController extends Controller
     ];
 
     /**
-     * Show the panelist evaluation form (redirects to dashboard with tab).
+     * Show the dedicated panelist interview evaluation terminal.
      */
-    public function index(Request $request): \Illuminate\Http\RedirectResponse
+    public function index(Request $request): \Illuminate\View\View
     {
-        return redirect()->route('admin.dashboard', ['tab' => 'panel']);
+        /** @var User $user */
+        $user = User::find($request->session()->get('admin_user_id'));
+        $candidates = Candidate::orderBy('name')->get();
+
+        if ($user && $user->panel && $user->panel !== 'cover') {
+            $panelCandidates = Candidate::where('panel', $user->panel)->orderBy('name')->get();
+        } else {
+            $panelCandidates = $candidates;
+        }
+
+        return view('admin.panel', [
+            'user'              => $user,
+            'candidates'        => $candidates,
+            'panelCandidates'   => $panelCandidates,
+            'interviewCriteria' => $this->interviewCriteria,
+        ]);
     }
 
     /**

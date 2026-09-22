@@ -1,58 +1,60 @@
-<h3>&#x1F4CA; Collective Trainee Survey Insights</h3>
-
-<div style="display: flex; justify-content: flex-end; margin: 0 0 12px;">
-    <a href="{{ route('admin.survey.export') }}" class="btn" style="text-decoration: none; padding: 8px 14px; font-size: 0.9rem;">
-        Export Survey Results (CSV)
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+    <div>
+        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700;">📈 Trainee Baseline vs. Endline Competency Insights</h3>
+        <p style="margin: 2px 0 0; font-size: 0.78rem; color: var(--text-secondary);">
+            Self-assessment scores across 11 digital and technical competency dimensions.
+        </p>
+    </div>
+    <a href="{{ route('admin.survey.export') }}" class="btn btn-outline btn-sm" style="padding: 3px 8px; font-size: 0.78rem;">
+        📥 Export Survey CSV
     </a>
 </div>
 
-<!-- Metric Cards -->
-<div class="metric-cards">
-    <div class="metric-card">
-        <div class="value">{{ $totalResponses ?? 0 }}</div>
-        <div class="label">Total Submitted Survey Forms</div>
-    </div>
-    <div class="metric-card">
-        <div class="value">{{ $baselineCount ?? 0 }}</div>
-        <div class="label">Baseline Entries (Day 1)</div>
-    </div>
-    <div class="metric-card">
-        <div class="value">{{ $endlineCount ?? 0 }}</div>
-        <div class="label">Endline Entries (Day 156)</div>
+{{-- Chart.js Canvas Container (Compact) --}}
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+    <div style="height: 260px; position: relative;">
+        <canvas id="surveyChart"></canvas>
     </div>
 </div>
 
-<!-- Chart.js Canvas -->
-<div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-top: 24px;">
-    <canvas id="surveyChart" height="400"></canvas>
-</div>
-
-<div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-top: 16px; overflow-x: auto;">
-    <h4 style="margin-top: 0;">Average Scores by Question</h4>
-    <table style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">
-        <thead>
-            <tr>
-                <th style="text-align: left; border-bottom: 1px solid #e6e6e6; padding: 10px 8px;">Question</th>
-                <th style="text-align: center; border-bottom: 1px solid #e6e6e6; padding: 10px 8px;">Baseline</th>
-                <th style="text-align: center; border-bottom: 1px solid #e6e6e6; padding: 10px 8px;">Endline</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach(($quantQuestions ?? []) as $key => $question)
+{{-- Compact Question Averages Table --}}
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px;">
+    <h4 style="margin: 0 0 8px; font-size: 0.88rem; font-weight: 700;">Average Scores by Competency (/5.00)</h4>
+    <div style="overflow-x: auto;">
+        <table class="data-table" style="font-size: 0.82rem;">
+            <thead>
                 <tr>
-                    <td style="vertical-align: top; border-bottom: 1px solid #f0f0f0; padding: 10px 8px;">
-                        {{ $question }}
-                    </td>
-                    <td style="text-align: center; border-bottom: 1px solid #f0f0f0; padding: 10px 8px;">
-                        {{ number_format((float) (($avgScores[$key]['baseline'] ?? 0)), 2) }}
-                    </td>
-                    <td style="text-align: center; border-bottom: 1px solid #f0f0f0; padding: 10px 8px;">
-                        {{ number_format((float) (($avgScores[$key]['endline'] ?? 0)), 2) }}
-                    </td>
+                    <th style="padding: 4px 8px;">Competency Dimension</th>
+                    <th style="padding: 4px 8px; text-align: center; width: 100px;">Baseline</th>
+                    <th style="padding: 4px 8px; text-align: center; width: 100px;">Endline</th>
+                    <th style="padding: 4px 8px; text-align: center; width: 100px;">Growth</th>
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach(($quantQuestions ?? []) as $key => $question)
+                    @php
+                        $baseVal = (float) ($avgScores[$key]['baseline'] ?? 0);
+                        $endVal  = (float) ($avgScores[$key]['endline'] ?? 0);
+                        $growth  = $endVal - $baseVal;
+                    @endphp
+                    <tr>
+                        <td style="padding: 4px 8px;">
+                            {{ $question }}
+                        </td>
+                        <td style="padding: 4px 8px; text-align: center; font-weight: 600; color: #2e7d32;">
+                            {{ number_format($baseVal, 2) }}
+                        </td>
+                        <td style="padding: 4px 8px; text-align: center; font-weight: 600; color: #1565c0;">
+                            {{ number_format($endVal, 2) }}
+                        </td>
+                        <td style="padding: 4px 8px; text-align: center; font-weight: 700; color: {{ $growth >= 0 ? '#2e7d32' : '#c62828' }};">
+                            {{ $growth > 0 ? '+' : '' }}{{ number_format($growth, 2) }}
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script>
@@ -64,9 +66,8 @@
 
     const ctx = canvas.getContext('2d');
 
-    // Force plain indexed arrays so Chart.js receives valid label/value lists.
     const labels = {!! json_encode(array_values(array_map(function($q) {
-        return substr($q, 0, 40) . (strlen($q) > 40 ? '...' : '');
+        return substr($q, 0, 32) . (strlen($q) > 32 ? '...' : '');
     }, $quantQuestions ?? []))) !!};
 
     const baselineData = {!! json_encode(array_values(array_map(function($key) use ($avgScores) {
@@ -83,16 +84,16 @@
             labels: labels,
             datasets: [
                 {
-                    label: 'Baseline',
+                    label: 'Baseline (Day 1)',
                     data: baselineData,
-                    backgroundColor: 'rgba(89, 179, 63, 0.6)',
+                    backgroundColor: 'rgba(89, 179, 63, 0.7)',
                     borderColor: 'rgba(89, 179, 63, 1)',
                     borderWidth: 1
                 },
                 {
-                    label: 'Endline',
+                    label: 'Endline (Day 156)',
                     data: endlineData,
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
                     borderColor: 'rgba(54, 162, 235, 1)',
                     borderWidth: 1
                 }
@@ -105,28 +106,21 @@
                 y: {
                     beginAtZero: true,
                     max: 5,
-                    ticks: { stepSize: 0.5 },
-                    title: {
-                        display: true,
-                        text: 'Average Score (1-5)'
-                    }
+                    ticks: { stepSize: 1, font: { size: 10 } },
+                    title: { display: false }
                 },
                 x: {
                     ticks: {
-                        maxRotation: 45,
-                        minRotation: 30,
-                        font: { size: 10 }
+                        maxRotation: 30,
+                        minRotation: 20,
+                        font: { size: 9 }
                     }
                 }
             },
             plugins: {
-                title: {
-                    display: true,
-                    text: 'Baseline vs Endline: Average Self-Assessment Scores',
-                    font: { size: 16 }
-                },
                 legend: {
-                    position: 'top'
+                    position: 'top',
+                    labels: { boxWidth: 12, font: { size: 11 } }
                 }
             }
         }

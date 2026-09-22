@@ -32,31 +32,140 @@
                 <span class="topnav-link-icon">🏠</span> Home
             </a>
 
-            <a href="{{ route('surveys.index') }}"
-               class="topnav-link {{ request()->is('surveys*') ? 'active' : '' }}">
-                <span class="topnav-link-icon">📋</span> Survey Portal
-            </a>
-
             @if(session()->has('admin_user_id') || auth()->check())
-                <div class="topnav-divider"></div>
+                @php $navUser = auth()->user() ?: \App\Models\User::find(session('admin_user_id')); @endphp
 
                 <a href="{{ route('admin.dashboard') }}"
-                   class="topnav-link {{ request()->is('admin') || request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                   class="topnav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
                     <span class="topnav-link-icon">📊</span> Dashboard
                 </a>
 
-                <a href="{{ route('assessments.index') }}"
-                   class="topnav-link {{ request()->is('admin/assessments*') ? 'active' : '' }}">
-                    <span class="topnav-link-icon">🧪</span> Assessment Engine
-                </a>
+                {{-- Dropdown: Assessments & Interviews --}}
+                @php
+                    $isAssessmentsActive = request()->is('admin/assessments*') || request()->is('admin/panel*') || request()->is('admin/literacy*') || request()->is('surveys*') || request()->is('survey*');
+                @endphp
+                <div class="topnav-nav-dropdown {{ $isAssessmentsActive ? 'has-active-child' : '' }}">
+                    <button type="button" class="topnav-dropdown-trigger {{ $isAssessmentsActive ? 'active' : '' }}" aria-expanded="false">
+                        <span class="topnav-link-icon">🧪</span>
+                        <span>Assessments</span>
+                        <span class="topnav-caret">▼</span>
+                    </button>
+                    <div class="topnav-dropdown-menu">
+                        <div class="topnav-dropdown-section-title">Evaluation Modules</div>
+                        <a href="{{ route('assessments.index') }}" class="topnav-menu-item {{ request()->is('admin/assessments*') ? 'active' : '' }}">
+                            <span class="topnav-menu-icon">🧪</span>
+                            <div class="topnav-menu-content">
+                                <div class="topnav-menu-title">Assessment Engine</div>
+                                <div class="topnav-menu-desc">Dynamic rubrics, surveys &amp; interviews</div>
+                            </div>
+                        </a>
+                        <a href="{{ route('admin.panel') }}" class="topnav-menu-item {{ request()->is('admin/panel*') ? 'active' : '' }}">
+                            <span class="topnav-menu-icon">🎙️</span>
+                            <div class="topnav-menu-content">
+                                <div class="topnav-menu-title">Interview Panel</div>
+                                <div class="topnav-menu-desc">Multi-panel candidate evaluation terminal</div>
+                            </div>
+                        </a>
+                        @if($navUser && $navUser->isSuper())
+                            <a href="{{ route('admin.literacy') }}" class="topnav-menu-item {{ request()->is('admin/literacy*') ? 'active' : '' }}">
+                                <span class="topnav-menu-icon">💻</span>
+                                <div class="topnav-menu-content">
+                                    <div class="topnav-menu-title">Digital Literacy</div>
+                                    <div class="topnav-menu-desc">Livingstone 10-task scoring &amp; verification</div>
+                                </div>
+                            </a>
+                        @endif
+                        <div class="topnav-menu-divider"></div>
+                        <a href="{{ route('surveys.index') }}" class="topnav-menu-item {{ request()->is('surveys*') ? 'active' : '' }}">
+                            <span class="topnav-menu-icon">📋</span>
+                            <div class="topnav-menu-content">
+                                <div class="topnav-menu-title">Survey Portal</div>
+                                <div class="topnav-menu-desc">Public baseline &amp; endline candidate access</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
 
-                @php $navUser = auth()->user() ?: \App\Models\User::find(session('admin_user_id')); @endphp
                 @if($navUser && $navUser->isSuper())
-                    <a href="{{ route('admin.leaderboard') }}"
-                       class="topnav-link {{ request()->routeIs('admin.leaderboard') ? 'active' : '' }}">
-                        <span class="topnav-link-icon">🏆</span> Leaderboard
-                    </a>
+                    {{-- Dropdown: Cohort & Roster --}}
+                    @php
+                        $isRosterActive = request()->is('admin/roster*');
+                    @endphp
+                    <div class="topnav-nav-dropdown {{ $isRosterActive ? 'has-active-child' : '' }}">
+                        <button type="button" class="topnav-dropdown-trigger {{ $isRosterActive ? 'active' : '' }}" aria-expanded="false">
+                            <span class="topnav-link-icon">👥</span>
+                            <span>Cohort &amp; Roster</span>
+                            <span class="topnav-caret">▼</span>
+                        </button>
+                        <div class="topnav-dropdown-menu">
+                            <div class="topnav-dropdown-section-title">Cohort Management</div>
+                            <a href="{{ route('admin.roster.index') }}" class="topnav-menu-item {{ request()->is('admin/roster*') && request('tab') !== 'import' ? 'active' : '' }}">
+                                <span class="topnav-menu-icon">🧑‍🎓</span>
+                                <div class="topnav-menu-content">
+                                    <div class="topnav-menu-title">Candidates &amp; Panelists</div>
+                                    <div class="topnav-menu-desc">Panel assignments, tracks &amp; credentials</div>
+                                </div>
+                            </a>
+                            <a href="{{ route('admin.roster.index', ['tab' => 'import']) }}" class="topnav-menu-item {{ request()->is('admin/roster*') && request('tab') === 'import' ? 'active' : '' }}">
+                                <span class="topnav-menu-icon">📥</span>
+                                <div class="topnav-menu-content">
+                                    <div class="topnav-menu-title">Import Results (Excel)</div>
+                                    <div class="topnav-menu-desc">Spreadsheet score sheets &amp; batch ingestion</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    {{-- Dropdown: Analytics & Rankings --}}
+                    @php
+                        $isAnalyticsActive = request()->routeIs('admin.leaderboard') || request()->routeIs('admin.analytics') || request()->routeIs('admin.scoresheet') || request()->routeIs('admin.survey.export');
+                    @endphp
+                    <div class="topnav-nav-dropdown {{ $isAnalyticsActive ? 'has-active-child' : '' }}">
+                        <button type="button" class="topnav-dropdown-trigger {{ $isAnalyticsActive ? 'active' : '' }}" aria-expanded="false">
+                            <span class="topnav-link-icon">🏆</span>
+                            <span>Analytics</span>
+                            <span class="topnav-caret">▼</span>
+                        </button>
+                        <div class="topnav-dropdown-menu">
+                            <div class="topnav-dropdown-section-title">Rankings &amp; Performance</div>
+                            <a href="{{ route('admin.leaderboard') }}" class="topnav-menu-item {{ request()->routeIs('admin.leaderboard') ? 'active' : '' }}">
+                                <span class="topnav-menu-icon">🏆</span>
+                                <div class="topnav-menu-content">
+                                    <div class="topnav-menu-title">Leaderboard &amp; Rankings</div>
+                                    <div class="topnav-menu-desc">Real-time composite scores &amp; top advance list</div>
+                                </div>
+                            </a>
+                            <a href="{{ route('admin.analytics') }}" class="topnav-menu-item {{ request()->routeIs('admin.analytics') ? 'active' : '' }}">
+                                <span class="topnav-menu-icon">📈</span>
+                                <div class="topnav-menu-content">
+                                    <div class="topnav-menu-title">Cohort Analytics</div>
+                                    <div class="topnav-menu-desc">Gender distributions, averages &amp; insights</div>
+                                </div>
+                            </a>
+                            <div class="topnav-menu-divider"></div>
+                            <div class="topnav-dropdown-section-title">Data Exports</div>
+                            <a href="{{ route('admin.scoresheet') }}" class="topnav-menu-item">
+                                <span class="topnav-menu-icon">📑</span>
+                                <div class="topnav-menu-content">
+                                    <div class="topnav-menu-title">Export Scoresheet (CSV)</div>
+                                    <div class="topnav-menu-desc">Comprehensive candidate assessment matrix</div>
+                                </div>
+                            </a>
+                            <a href="{{ route('admin.survey.export') }}" class="topnav-menu-item">
+                                <span class="topnav-menu-icon">📊</span>
+                                <div class="topnav-menu-content">
+                                    <div class="topnav-menu-title">Export Survey Data (CSV)</div>
+                                    <div class="topnav-menu-desc">M&amp;E survey responses dataset</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
                 @endif
+            @else
+                <a href="{{ route('surveys.index') }}"
+                   class="topnav-link {{ request()->is('surveys*') ? 'active' : '' }}">
+                    <span class="topnav-link-icon">📋</span> Survey Portal
+                </a>
             @endif
         </div>
 
@@ -85,6 +194,14 @@
                     </a>
 
                     @if($currentUser && $currentUser->isSuper())
+                        <a href="{{ route('admin.roster.index') }}" class="topnav-dropdown-item">
+                            👥 Candidates &amp; Panelists
+                        </a>
+
+                        <a href="{{ route('admin.roster.index', ['tab' => 'import']) }}" class="topnav-dropdown-item">
+                            📊 Import Results (Excel)
+                        </a>
+
                         <a href="{{ route('admin.survey.export') }}" class="topnav-dropdown-item">
                             📥 Export Survey CSV
                         </a>
@@ -122,6 +239,27 @@
     <!-- ===== SCRIPTS ===== -->
     <script src="{{ asset('js/app.js') }}"></script>
     <script>
+        // ---- Navigation Dropdowns (Desktop & Mobile) ----
+        document.querySelectorAll('.topnav-nav-dropdown').forEach(function(dropdown) {
+            const trigger = dropdown.querySelector('.topnav-dropdown-trigger');
+            if (trigger) {
+                trigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const wasOpen = dropdown.classList.contains('open');
+                    // Close all other dropdowns
+                    document.querySelectorAll('.topnav-nav-dropdown').forEach(d => d.classList.remove('open'));
+                    if (userEl) userEl.classList.remove('open');
+
+                    if (!wasOpen) {
+                        dropdown.classList.add('open');
+                        trigger.setAttribute('aria-expanded', 'true');
+                    } else {
+                        trigger.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            }
+        });
+
         // ---- User Dropdown ----
         const userBtn   = document.getElementById('user-dropdown-btn');
         const userEl    = document.getElementById('topnav-user');
@@ -130,15 +268,19 @@
         if (userBtn && userEl) {
             userBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
+                // Close navigation dropdowns if open
+                document.querySelectorAll('.topnav-nav-dropdown').forEach(d => d.classList.remove('open'));
                 const isOpen = userEl.classList.toggle('open');
                 userBtn.setAttribute('aria-expanded', isOpen);
             });
-
-            document.addEventListener('click', function () {
-                userEl.classList.remove('open');
-                if (userBtn) userBtn.setAttribute('aria-expanded', 'false');
-            });
         }
+
+        // Close any dropdown when clicking outside
+        document.addEventListener('click', function () {
+            document.querySelectorAll('.topnav-nav-dropdown').forEach(d => d.classList.remove('open'));
+            if (userEl) userEl.classList.remove('open');
+            if (userBtn) userBtn.setAttribute('aria-expanded', 'false');
+        });
 
         // ---- Mobile Nav Toggle ----
         const mobileToggle = document.getElementById('mobile-nav-toggle');

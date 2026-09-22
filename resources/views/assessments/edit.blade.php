@@ -94,7 +94,7 @@
     <!-- Assignments Card -->
     <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
         <h3 style="color: #59B33F; margin-bottom: 16px; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 8px;">
-            3. Participant Assignments
+            3. Participant Assignments &amp; Quick Registration
         </h3>
 
         @php
@@ -103,27 +103,66 @@
         @endphp
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <!-- Evaluators -->
             <div>
-                <label style="font-weight: bold; margin-bottom: 8px; display: block;">Assign Evaluators / Panelists:</label>
-                <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fafafa;">
-                    @foreach($panelists as $panelist)
-                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: normal;">
-                            <input type="checkbox" name="panelists[]" value="{{ $panelist->id }}" {{ in_array($panelist->id, old('panelists', $assignedPanelistIds)) ? 'checked' : '' }} style="accent-color: #59B33F;">
-                            <span>{{ $panelist->panelist_name ?: $panelist->name }} ({{ $panelist->email }})</span>
-                        </label>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <label style="font-weight: bold; margin: 0; color:#1a1a1a;">Assign Evaluators / Panelists:</label>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <button type="button" onclick="toggleAllCheckboxes('panelist-cb', true)" class="btn btn-ghost btn-sm" style="font-size:0.75rem; padding:2px 6px;">All</button>
+                        <button type="button" onclick="toggleAllCheckboxes('panelist-cb', false)" class="btn btn-ghost btn-sm" style="font-size:0.75rem; padding:2px 6px;">None</button>
+                        <button type="button" onclick="addNewEvaluatorRow()" class="btn" style="background:#e8f5e9; color:#2e7d32; font-size:0.75rem; padding:2px 6px;">+ New</button>
+                    </div>
+                </div>
+
+                <input type="text" id="panelistSearch" onkeyup="filterListItems('panelist-item', 'panelist-text', this.value)" placeholder="Search evaluators..."
+                       style="width:100%; padding:6px 10px; font-size:0.82rem; border:1px solid #ddd; border-radius:4px; margin-bottom:8px;">
+
+                <div style="max-height: 220px; overflow-y: auto; border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fafafa;">
+                    @foreach($panelists as $pIdx => $panelist)
+                        <div class="panelist-item" style="display: flex; align-items: center; justify-content:space-between; gap: 8px; margin-bottom: 8px; padding-bottom:4px; border-bottom:1px solid #eee;">
+                            <label style="display: flex; align-items: center; gap: 8px; margin: 0; font-weight: normal; cursor: pointer; flex:1;">
+                                <input type="checkbox" name="panelists[{{ $pIdx }}][user_id]" value="{{ $panelist->id }}" class="panelist-cb" {{ in_array($panelist->id, old('panelists', $assignedPanelistIds)) ? 'checked' : '' }} style="accent-color: #59B33F;">
+                                <span class="panelist-text">{{ $panelist->panelist_name ?: $panelist->name }} ({{ $panelist->email }})</span>
+                            </label>
+                            <select name="panelists[{{ $pIdx }}][panel_name]" class="form-control" style="width: 90px; height: 30px; font-size: 0.75rem; padding: 2px 4px;">
+                                <option value="A" {{ $panelist->panel == 'A' ? 'selected' : '' }}>Panel A</option>
+                                <option value="B" {{ $panelist->panel == 'B' ? 'selected' : '' }}>Panel B</option>
+                                <option value="cover" {{ $panelist->panel == 'cover' ? 'selected' : '' }}>Cover</option>
+                            </select>
+                        </div>
                     @endforeach
+                    <div id="new-evaluators-container"></div>
                 </div>
             </div>
 
+            <!-- Candidates -->
             <div>
-                <label style="font-weight: bold; margin-bottom: 8px; display: block;">Assign Candidates:</label>
-                <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fafafa;">
-                    @foreach($candidates as $candidate)
-                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: normal;">
-                            <input type="checkbox" name="candidates[]" value="{{ $candidate->id }}" {{ in_array($candidate->id, old('candidates', $assignedCandidateIds)) ? 'checked' : '' }} style="accent-color: #59B33F;">
-                            <span>{{ $candidate->name }} (Panel {{ $candidate->panel }})</span>
-                        </label>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <label style="font-weight: bold; margin: 0; color:#1a1a1a;">Assign Candidates:</label>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <button type="button" onclick="toggleAllCheckboxes('cand-cb', true)" class="btn btn-ghost btn-sm" style="font-size:0.75rem; padding:2px 6px;">All</button>
+                        <button type="button" onclick="toggleAllCheckboxes('cand-cb', false)" class="btn btn-ghost btn-sm" style="font-size:0.75rem; padding:2px 6px;">None</button>
+                        <button type="button" onclick="addNewCandidateRow()" class="btn" style="background:#e3f2fd; color:#1976d2; font-size:0.75rem; padding:2px 6px;">+ New</button>
+                    </div>
+                </div>
+
+                <input type="text" id="candSearch" onkeyup="filterListItems('cand-item', 'cand-text', this.value)" placeholder="Search candidates..."
+                       style="width:100%; padding:6px 10px; font-size:0.82rem; border:1px solid #ddd; border-radius:4px; margin-bottom:8px;">
+
+                <div style="max-height: 220px; overflow-y: auto; border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fafafa;">
+                    @foreach($candidates as $cIdx => $candidate)
+                        <div class="cand-item" style="display: flex; align-items: center; justify-content:space-between; gap: 8px; margin-bottom: 8px; padding-bottom:4px; border-bottom:1px solid #eee;">
+                            <label style="display: flex; align-items: center; gap: 8px; margin: 0; font-weight: normal; cursor: pointer; flex:1;">
+                                <input type="checkbox" name="candidates[{{ $cIdx }}][candidate_id]" value="{{ $candidate->id }}" class="cand-cb" {{ in_array($candidate->id, old('candidates', $assignedCandidateIds)) ? 'checked' : '' }} style="accent-color: #59B33F;">
+                                <span class="cand-text">{{ $candidate->name }} ({{ $candidate->gender ?: 'N/A' }})</span>
+                            </label>
+                            <select name="candidates[{{ $cIdx }}][panel_name]" class="form-control" style="width: 90px; height: 30px; font-size: 0.75rem; padding: 2px 4px;">
+                                <option value="A" {{ $candidate->panel == 'A' ? 'selected' : '' }}>Panel A</option>
+                                <option value="B" {{ $candidate->panel == 'B' ? 'selected' : '' }}>Panel B</option>
+                            </select>
+                        </div>
                     @endforeach
+                    <div id="new-candidates-container"></div>
                 </div>
             </div>
         </div>
@@ -153,6 +192,82 @@
 </form>
 
 <script>
+function toggleAllCheckboxes(className, checked) {
+    document.querySelectorAll('.' + className).forEach(cb => {
+        const parent = cb.closest('.panelist-item, .cand-item');
+        if (!parent || parent.style.display !== 'none') {
+            cb.checked = checked;
+        }
+    });
+}
+
+function filterListItems(itemClass, textClass, query) {
+    const q = (query || '').toLowerCase();
+    document.querySelectorAll('.' + itemClass).forEach(item => {
+        const text = item.querySelector('.' + textClass)?.textContent?.toLowerCase() || '';
+        item.style.display = text.includes(q) ? 'flex' : 'none';
+    });
+}
+
+let newEvalCount = 0;
+function addNewEvaluatorRow() {
+    const container = document.getElementById('new-evaluators-container');
+    const div = document.createElement('div');
+    div.style.background = '#e8f5e9';
+    div.style.border = '1px solid #c8e6c9';
+    div.style.padding = '8px';
+    div.style.borderRadius = '6px';
+    div.style.marginTop = '8px';
+    div.style.display = 'grid';
+    div.style.gridTemplateColumns = '1fr 1fr 1fr 80px auto';
+    div.style.gap = '6px';
+
+    div.innerHTML = `
+        <input type="text" name="new_panelists[${newEvalCount}][name]" class="form-control" style="height: 32px; font-size: 0.8rem;" placeholder="Full Name" required>
+        <input type="email" name="new_panelists[${newEvalCount}][email]" class="form-control" style="height: 32px; font-size: 0.8rem;" placeholder="Email" required>
+        <input type="password" name="new_panelists[${newEvalCount}][password]" class="form-control" style="height: 32px; font-size: 0.8rem;" placeholder="Password" required>
+        <select name="new_panelists[${newEvalCount}][panel_name]" class="form-control" style="height: 32px; font-size: 0.8rem;">
+            <option value="A">Panel A</option>
+            <option value="B">Panel B</option>
+            <option value="cover">Cover</option>
+        </select>
+        <button type="button" onclick="this.parentElement.remove()" class="btn btn-danger" style="padding: 2px 6px; height: 32px; font-size: 0.75rem;">&times;</button>
+    `;
+
+    container.appendChild(div);
+    newEvalCount++;
+}
+
+let newCandCount = 0;
+function addNewCandidateRow() {
+    const container = document.getElementById('new-candidates-container');
+    const div = document.createElement('div');
+    div.style.background = '#e3f2fd';
+    div.style.border = '1px solid #bbdefb';
+    div.style.padding = '8px';
+    div.style.borderRadius = '6px';
+    div.style.marginTop = '8px';
+    div.style.display = 'grid';
+    div.style.gridTemplateColumns = '2fr 1fr 1fr auto';
+    div.style.gap = '6px';
+
+    div.innerHTML = `
+        <input type="text" name="new_candidates[${newCandCount}][name]" class="form-control" style="height: 32px; font-size: 0.8rem;" placeholder="Candidate Name" required>
+        <select name="new_candidates[${newCandCount}][gender]" class="form-control" style="height: 32px; font-size: 0.8rem;">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+        </select>
+        <select name="new_candidates[${newCandCount}][panel_name]" class="form-control" style="height: 32px; font-size: 0.8rem;">
+            <option value="A">Panel A</option>
+            <option value="B">Panel B</option>
+        </select>
+        <button type="button" onclick="this.parentElement.remove()" class="btn btn-danger" style="padding: 2px 6px; height: 32px; font-size: 0.75rem;">&times;</button>
+    `;
+
+    container.appendChild(div);
+    newCandCount++;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     let questionIndex = 0;
     const questionsContainer = document.getElementById('questions-container');

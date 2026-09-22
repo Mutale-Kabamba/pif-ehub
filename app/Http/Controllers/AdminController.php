@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Assessment;
 use App\Models\Candidate;
 use App\Models\LiteracyScore;
+use App\Models\PanelScore;
 use App\Models\SurveyResponse;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -119,47 +121,62 @@ class AdminController extends Controller
     }
 
     /**
-     * Show the admin dashboard.
+     * Show the admin metrics dashboard.
+     * Displays only counts of Surveys, Assessments, and Interviews with filters to inspect respective results.
      */
     public function dashboard(Request $request): \Illuminate\View\View
     {
         /** @var User $user */
         $user = User::find($request->session()->get('admin_user_id'));
 
-        $tab = $request->query('tab', $user->isSuper() ? 'leaderboard' : 'panel');
+        // 1. Primary Engine Counts
+        $totalSurveys = Assessment::where('type', 'survey')->count();
+        $totalAssessments = Assessment::where('type', 'assessment')->count();
+        $totalInterviews = Assessment::where('type', 'interview')->count();
 
-        // All candidates (used for literacy, leaderboard, etc.)
-        $candidates = Candidate::orderBy('name')->get();
+        // 2. Filtered Engine List
+        $query = Assessment::withCount(['questions', 'panelists', 'candidates', 'evaluationScores'])
+            ->with(['rule']);
 
-        // Candidates filtered to the logged-in user's panel (for panel evaluation tab)
-        if ($user->panel && $user->panel !== 'cover') {
-            $panelCandidates = Candidate::where('panel', $user->panel)->orderBy('name')->get();
-        } else {
-            $panelCandidates = $candidates; // cover / no panel → see all
+        // Non-super panelists only see assigned assessments
+        if ($user && ! $user->isSuper()) {
+            $query->whereHas('assignments', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
         }
 
-        $viewData = [
-            'user'              => $user,
-            'tab'               => $tab,
-            'candidates'        => $candidates,
-            'panelCandidates'   => $panelCandidates,
-            'quantQuestions'    => $this->quantQuestions,
-            'qualQuestions'     => $this->qualQuestions,
-            'literacyTasks'     => $this->literacyTasks,
-            'interviewCriteria' => $this->interviewCriteria,
-        ];
-
-        // Load leaderboard data when on leaderboard tab
-        if ($tab === 'leaderboard' && $user->isSuper()) {
-            $viewData['leaderboard'] = LeaderboardController::getLeaderboardData();
+        $typeFilter = $request->query('type');
+        if ($request->filled('type') && in_array($typeFilter, ['interview', 'assessment', 'survey'])) {
+            $query->where('type', $typeFilter);
         }
 
-        // Load analytics data when on analytics tab
-        if ($tab === 'analytics' && $user->isSuper()) {
-            $viewData = array_merge($viewData, $this->getAnalyticsData());
+        $statusFilter = $request->query('status');
+        if ($request->filled('status') && in_array($statusFilter, ['active', 'draft', 'completed'])) {
+            $query->where('status', $statusFilter);
         }
 
-        return view('admin.dashboard', $viewData);
+        $searchQuery = $request->query('q');
+        if ($request->filled('q')) {
+            $searchTerm = '%' . $searchQuery . '%';
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('title', 'like', $searchTerm)
+                  ->orWhere('description', 'like', $searchTerm)
+                  ->orWhere('access_key', 'like', $searchTerm);
+            });
+        }
+
+        $assessments = $query->orderBy('created_at', 'desc')->get();
+
+        return view('admin.dashboard', [
+            'user'             => $user,
+            'totalSurveys'     => $totalSurveys,
+            'totalAssessments' => $totalAssessments,
+            'totalInterviews'  => $totalInterviews,
+            'assessments'      => $assessments,
+            'typeFilter'       => $typeFilter,
+            'statusFilter'     => $statusFilter,
+            'searchQuery'      => $searchQuery,
+        ]);
     }
 
     /**
@@ -276,11 +293,19 @@ class AdminController extends Controller
     }
 
     /**
-     * Show the literacy assessment form (redirects to dashboard with tab).
+     * Show the dedicated literacy assessment grading terminal.
      */
-    public function literacyForm(): \Illuminate\Http\RedirectResponse
+    public function literacyForm(Request $request): \Illuminate\View\View
     {
-        return redirect()->route('admin.dashboard', ['tab' => 'literacy']);
+        /** @var User $user */
+        $user = User::find($request->session()->get('admin_user_id'));
+        $candidates = Candidate::orderBy('name')->get();
+
+        return view('admin.literacy', [
+            'user'          => $user,
+            'candidates'    => $candidates,
+            'literacyTasks' => $this->literacyTasks,
+        ]);
     }
 
     /**

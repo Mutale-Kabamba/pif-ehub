@@ -146,6 +146,8 @@
                 <div class="assessment-card-actions" onclick="event.stopPropagation();">
                     <a href="{{ route('assessments.show', $item->id) }}"
                        class="btn btn-primary btn-sm">View Hub</a>
+                    <a href="{{ route('assessments.show', [$item->id, 'tab' => 'results']) }}"
+                       class="btn btn-outline btn-sm" style="color:#2563eb; border-color:#93c5fd;">📥 Import</a>
                     <a href="{{ route('assessments.evaluate', $item->id) }}"
                        class="btn btn-sm" style="background:#0f766e; color:white;">Grade</a>
                     @if($currentUser && $currentUser->isSuper())

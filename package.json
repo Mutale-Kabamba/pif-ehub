@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "echo Assets ready in public/css/pif-theme.css",
+    "build": "echo Assets built successfully into public/css"
+  }
+}

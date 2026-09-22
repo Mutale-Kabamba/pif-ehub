@@ -49,18 +49,31 @@ class LiteracyScore extends Model
         parent::boot();
 
         static::saving(function (LiteracyScore $score) {
-            $score->total_score = (
-                (int) $score->task1_directory +
-                (int) $score->task2_wordproc +
-                (int) $score->task3_research +
-                (int) $score->task4_formatting +
-                (int) $score->task5_saving +
-                (int) $score->task6_spreadsheet +
-                (int) $score->task7_screenshot +
-                (int) $score->task8_zip +
-                (int) $score->task9_sysspecs +
-                (int) $score->task10_notepad
-            );
+            $hasTask = $score->task1_directory !== null
+                || $score->task2_wordproc !== null
+                || $score->task3_research !== null
+                || $score->task4_formatting !== null
+                || $score->task5_saving !== null
+                || $score->task6_spreadsheet !== null
+                || $score->task7_screenshot !== null
+                || $score->task8_zip !== null
+                || $score->task9_sysspecs !== null
+                || $score->task10_notepad !== null;
+
+            if ($hasTask) {
+                $score->total_score = (
+                    (int) $score->task1_directory +
+                    (int) $score->task2_wordproc +
+                    (int) $score->task3_research +
+                    (int) $score->task4_formatting +
+                    (int) $score->task5_saving +
+                    (int) $score->task6_spreadsheet +
+                    (int) $score->task7_screenshot +
+                    (int) $score->task8_zip +
+                    (int) $score->task9_sysspecs +
+                    (int) $score->task10_notepad
+                );
+            }
         });
     }
 

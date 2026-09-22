@@ -59,6 +59,9 @@
     </div>
 
     <div class="hub-header-actions">
+        <button type="button" class="btn btn-sm" style="background:#2563eb; color:white;" onclick="openModal('importResultsModal')">
+            📥 Import Results
+        </button>
         <a href="{{ route('assessments.evaluate', $assessment->id) }}"
            class="btn btn-sm" style="background:#0f766e; color:white;">
             ✏️ Grade / Evaluate
@@ -74,6 +77,10 @@
 
 @if(session('success'))
     <div class="alert alert-success">{{ session('success') }}</div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-error">{{ session('error') }}</div>
 @endif
 
 {{-- ========== METRIC OVERVIEW ========== --}}
@@ -141,11 +148,25 @@
 ====================================================== --}}
 @if($activeTab === 'results')
     <div class="card">
-        <div class="card-header">
-            <span class="card-title">🏆 Candidate Evaluation Leaderboard</span>
-            <div class="info-box info" style="margin:0; padding:8px 14px; font-size:0.8rem; border-radius:100px;">
-                <strong>Score Formula:</strong>
-                Avg<sub>panelists</sub>(Σ question_score × weight), capped at score limit
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+                <span class="card-title">🏆 Candidate Evaluation Leaderboard</span>
+                <div class="info-box info" style="margin:4px 0 0; padding:4px 12px; font-size:0.75rem; border-radius:100px; display:inline-block;">
+                    <strong>Formula:</strong> Avg<sub>panelists</sub>(Σ question_score × weight), capped at limit
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'xlsx']) }}"
+                   class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                    📥 Template (.xlsx)
+                </a>
+                <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'csv']) }}"
+                   class="btn btn-ghost btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                    .csv
+                </a>
+                <button type="button" class="btn btn-primary btn-sm" onclick="openModal('importResultsModal')" style="display:inline-flex; align-items:center; gap:6px;">
+                    📤 Import Results
+                </button>
             </div>
         </div>
         <div style="overflow-x:auto;">
@@ -202,7 +223,9 @@
                             <td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">
                                 No candidates assigned or evaluated yet.
                                 @if($isSuper)
-                                    <a href="{{ route('assessments.edit', $assessment->id) }}" style="color:var(--green-primary);">Add candidates →</a>
+                                    <a href="javascript:void(0)" onclick="openModal('addCandidatesModal')" style="color:var(--green-primary); font-weight:600;">+ Add candidates now</a>
+                                    or
+                                    <a href="javascript:void(0)" onclick="openModal('importResultsModal')" style="color:#2563eb; font-weight:600;">📥 Import Results from Excel</a>
                                 @endif
                             </td>
                         </tr>
@@ -334,20 +357,31 @@
 ====================================================== --}}
 @if($activeTab === 'candidates' && $isSuper)
     <div class="card">
-        <div class="card-header">
-            <span class="card-title">🧑‍🎓 Assigned Candidates</span>
-            <a href="{{ route('assessments.edit', $assessment->id) }}" class="btn btn-outline btn-sm">
-                Manage Candidates
-            </a>
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <span class="card-title">🧑‍🎓 Assigned Candidates ({{ $assessment->candidates->count() }})</span>
+                <p style="margin:2px 0 0; color:var(--text-secondary); font-size:0.82rem;">
+                    Manage candidates assigned to this assessment, add new candidates, or remove existing participants.
+                </p>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addCandidatesModal')">
+                    + Add Candidates
+                </button>
+                <a href="{{ route('assessments.edit', $assessment->id) }}" class="btn btn-outline btn-sm">
+                    ⚙️ Configure Roster
+                </a>
+            </div>
         </div>
         <div style="overflow-x:auto;">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Gender</th>
-                        <th>Panel Assignment</th>
-                        <th style="text-align:right;">Quick Grade</th>
+                        <th>Candidate Name</th>
+                        <th>Gender Track</th>
+                        <th>Assigned Panel</th>
+                        <th style="text-align:center;">Evaluated</th>
+                        <th style="text-align:right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -357,9 +391,15 @@
                                 ->where('candidate_id', $c->id)
                                 ->where('role', 'candidate')
                                 ->first();
+
+                            $hasScores = \App\Models\EvaluationScore::where('assessment_id', $assessment->id)
+                                ->where('candidate_id', $c->id)
+                                ->exists();
                         @endphp
                         <tr>
-                            <td><strong>{{ $c->name }}</strong></td>
+                            <td>
+                                <strong>{{ $c->name }}</strong>
+                            </td>
                             <td>
                                 <span class="badge {{ $c->gender === 'Female' ? 'badge-purple' : 'badge-blue' }}">
                                     {{ $c->gender ?: 'N/A' }}
@@ -367,19 +407,43 @@
                             </td>
                             <td>
                                 <span class="badge badge-gray">
-                                    Panel {{ $candAssignment?->panel_name ?: $c->panel }}
+                                    Panel {{ $candAssignment?->panel_name ?: ($c->panel ?: 'A') }}
                                 </span>
                             </td>
+                            <td style="text-align:center;">
+                                @if($hasScores)
+                                    <span class="badge badge-green">Scored</span>
+                                @else
+                                    <span class="badge badge-gray">Pending</span>
+                                @endif
+                            </td>
                             <td style="text-align:right;">
-                                <a href="{{ route('assessments.evaluate', [$assessment->id, 'candidate_id' => $c->id]) }}"
-                                   class="btn btn-primary btn-sm">Grade</a>
+                                <div style="display:inline-flex; gap:6px; align-items:center;">
+                                    <a href="{{ route('assessments.evaluate', [$assessment->id, 'candidate_id' => $c->id]) }}"
+                                       class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:0.8rem;">
+                                        Grade
+                                    </a>
+                                    <form action="{{ route('assessments.candidates.remove', ['assessment' => $assessment->id, 'candidate' => $c->id]) }}" method="POST"
+                                          onsubmit="return confirm('Remove candidate {{ addslashes($c->name) }} from this assessment? Associated assessment evaluation scores will be detached.');"
+                                          style="display:inline; margin:0;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-ghost btn-sm" style="padding:4px 8px; font-size:0.85rem; color:#dc2626;" title="Remove from this assessment">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" style="text-align:center; padding:32px; color:var(--text-muted);">
-                                No candidates assigned.
-                                <a href="{{ route('assessments.edit', $assessment->id) }}" style="color:var(--green-primary);">Add candidates →</a>
+                            <td colspan="5" style="text-align:center; padding:36px; color:var(--text-muted);">
+                                No candidates assigned to this assessment yet.
+                                <div style="margin-top:10px;">
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addCandidatesModal')">
+                                        + Add Candidates Now
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @endforelse
@@ -501,5 +565,195 @@
         </div>
     </div>
 @endif
+
+{{-- ======================================================
+     MODAL 1: IMPORT RESULTS SPREADSHEET
+====================================================== --}}
+<div id="importResultsModal" class="pif-modal" style="display:none;">
+    <div class="pif-modal-backdrop" onclick="closeModal('importResultsModal')"></div>
+    <div class="pif-modal-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <h3 style="margin:0; font-size:1.2rem; display:flex; align-items:center; gap:8px;">
+                📥 Import Results: {{ $assessment->title }}
+            </h3>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('importResultsModal')">✕</button>
+        </div>
+
+        <div style="margin-bottom:16px; font-size:0.85rem; color:var(--text-secondary); line-height:1.4;">
+            Upload an Excel (.xlsx, .xls) or CSV spreadsheet containing evaluated candidate scores. Any new candidates will be created and assigned automatically.
+        </div>
+
+        <div style="background:var(--surface-alt); border-radius:var(--radius-sm); padding:12px; margin-bottom:16px;">
+            <div style="font-size:0.8rem; font-weight:700; color:var(--text-primary); margin-bottom:6px;">Step 1: Download Customized Template</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'xlsx']) }}" class="btn btn-outline btn-sm" style="font-size:0.8rem;">
+                    📥 Template (.xlsx)
+                </a>
+                <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'csv']) }}" class="btn btn-ghost btn-sm" style="font-size:0.8rem;">
+                    📥 Template (.csv)
+                </a>
+            </div>
+        </div>
+
+        <div style="font-size:0.8rem; font-weight:700; color:var(--text-primary); margin-bottom:6px;">Step 2: Upload Completed Score Sheet</div>
+        <form action="{{ route('assessments.import-results', $assessment->id) }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="form-group" style="margin-bottom:16px;">
+                <input type="file" name="file" accept=".xlsx,.xls,.csv" class="form-control" required style="padding:8px; font-size:0.85rem;">
+                <small style="color:var(--text-muted); display:block; margin-top:4px;">Max file size: 10MB.</small>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('importResultsModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="background:#2563eb;">Upload &amp; Import</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ======================================================
+     MODAL 2: ADD CANDIDATES TO ASSESSMENT
+====================================================== --}}
+<div id="addCandidatesModal" class="pif-modal" style="display:none;">
+    <div class="pif-modal-backdrop" onclick="closeModal('addCandidatesModal')"></div>
+    <div class="pif-modal-card" style="max-width:560px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <h3 style="margin:0; font-size:1.2rem; display:flex; align-items:center; gap:8px;">
+                🧑‍🎓 Add Candidates to Assessment
+            </h3>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('addCandidatesModal')">✕</button>
+        </div>
+
+        @php
+            $assignedCandIds = $assessment->candidates->pluck('id')->toArray();
+        @endphp
+
+        <form action="{{ route('assessments.candidates.add', $assessment->id) }}" method="POST">
+            @csrf
+
+            <div style="margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <label style="font-weight:700; font-size:0.85rem; color:var(--text-primary); margin:0;">
+                        1. Select From Existing Candidates:
+                    </label>
+                    <div style="display:flex; gap:6px;">
+                        <button type="button" onclick="selectAllModalCandidates(true)" class="btn btn-ghost btn-sm" style="font-size:0.75rem; padding:2px 6px;">Select All</button>
+                        <button type="button" onclick="selectAllModalCandidates(false)" class="btn btn-ghost btn-sm" style="font-size:0.75rem; padding:2px 6px;">Clear</button>
+                    </div>
+                </div>
+
+                <input type="text" id="modalCandidateSearch" onkeyup="filterModalCandidates()" placeholder="Search candidates..."
+                       style="width:100%; padding:6px 10px; font-size:0.82rem; border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:8px;">
+
+                <div id="modalCandidatesList" style="max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; background:var(--surface-alt);">
+                    @foreach($allCandidates as $cand)
+                        @php
+                            $isAlreadyAssigned = in_array($cand->id, $assignedCandIds);
+                        @endphp
+                        <label class="modal-cand-item" style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 0; margin:0; font-weight:normal; cursor:{{ $isAlreadyAssigned ? 'default' : 'pointer' }}; opacity:{{ $isAlreadyAssigned ? '0.6' : '1' }};">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <input type="checkbox" name="candidate_ids[]" value="{{ $cand->id }}" class="modal-cand-cb" {{ $isAlreadyAssigned ? 'disabled checked' : '' }} style="accent-color:var(--green-primary);">
+                                <span class="cand-name-text">{{ $cand->name }}</span>
+                            </div>
+                            <span class="badge badge-gray" style="font-size:0.72rem;">
+                                {{ $isAlreadyAssigned ? 'Already Assigned' : 'Panel ' . ($cand->panel ?: 'A') }}
+                            </span>
+                        </label>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:16px;">
+                <label for="assign_panel_name" style="font-weight:700; font-size:0.85rem;">Assign Panel to Selected Candidates</label>
+                <select name="panel_name" id="assign_panel_name" class="form-control" style="font-size:0.85rem;">
+                    <option value="">Keep Candidate's Default Panel</option>
+                    <option value="A">Panel A</option>
+                    <option value="B">Panel B</option>
+                    <option value="cover">Cover / Observer</option>
+                </select>
+            </div>
+
+            <div style="border-top:1px dashed #ddd; padding-top:12px; margin-bottom:16px;">
+                <div style="font-weight:700; font-size:0.85rem; color:var(--text-primary); margin-bottom:8px;">
+                    2. OR Quick Register a New Candidate:
+                </div>
+                <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:8px;">
+                    <input type="text" name="new_candidate_name" placeholder="Full name" class="form-control" style="font-size:0.82rem; height:34px;">
+                    <select name="new_candidate_gender" class="form-control" style="font-size:0.82rem; height:34px;">
+                        <option value="Female">Female</option>
+                        <option value="Male">Male</option>
+                    </select>
+                    <select name="new_candidate_panel" class="form-control" style="font-size:0.82rem; height:34px;">
+                        <option value="A">Panel A</option>
+                        <option value="B">Panel B</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addCandidatesModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save &amp; Assign Candidates</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.pif-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pif-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+}
+.pif-modal-card {
+    position: relative;
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    width: 92%;
+    max-width: 500px;
+    padding: 24px;
+    z-index: 1051;
+    animation: modalSlide 0.2s ease-out;
+}
+@keyframes modalSlide {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+</style>
+
+<script>
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'flex';
+}
+
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+}
+
+function selectAllModalCandidates(checked) {
+    document.querySelectorAll('.modal-cand-cb:not(:disabled)').forEach(cb => {
+        cb.checked = checked;
+    });
+}
+
+function filterModalCandidates() {
+    const query = (document.getElementById('modalCandidateSearch').value || '').toLowerCase();
+    document.querySelectorAll('.modal-cand-item').forEach(item => {
+        const text = item.querySelector('.cand-name-text')?.textContent?.toLowerCase() || '';
+        item.style.display = text.includes(query) ? 'flex' : 'none';
+    });
+}
+</script>
 
 @endsection

@@ -11,12 +11,14 @@ use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\User;
 use App\Services\EvaluationService;
+use App\Services\ExcelImportExportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AssessmentController extends Controller
 {
@@ -100,16 +102,12 @@ class AssessmentController extends Controller
             'passing_threshold' => 'nullable|numeric|min:0',
             'rules_json' => 'nullable|string',
             'panelists' => 'nullable|array',
-            'panelists.*.user_id' => 'required_with:panelists|exists:users,id',
-            'panelists.*.panel_name' => 'nullable|string|max:50',
             'new_panelists' => 'nullable|array',
             'new_panelists.*.name' => 'required_with:new_panelists|string|max:255',
             'new_panelists.*.email' => 'required_with:new_panelists|email|unique:users,email',
             'new_panelists.*.password' => 'required_with:new_panelists|string|min:6',
             'new_panelists.*.panel_name' => 'nullable|string|max:50',
             'candidates' => 'nullable|array',
-            'candidates.*.candidate_id' => 'required_with:candidates|exists:candidates,id',
-            'candidates.*.panel_name' => 'nullable|string|max:50',
             'new_candidates' => 'nullable|array',
             'new_candidates.*.name' => 'required_with:new_candidates|string|max:255',
             'new_candidates.*.gender' => 'nullable|in:Male,Female',
@@ -124,7 +122,7 @@ class AssessmentController extends Controller
             'questions.*.options.*.option_value' => 'nullable|numeric',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $request) {
             // Generate access key if empty
             $accessKey = !empty($validated['access_key']) ? Str::upper($validated['access_key']) : 'KEY-' . Str::upper(Str::random(6));
 
@@ -178,15 +176,21 @@ class AssessmentController extends Controller
                 }
             }
 
-            // 4. Assign Existing Panelists
-            if (!empty($validated['panelists'])) {
-                foreach ($validated['panelists'] as $pData) {
-                    AssessmentAssignment::create([
-                        'assessment_id' => $assessment->id,
-                        'user_id' => $pData['user_id'],
-                        'role' => 'panelist',
-                        'panel_name' => $pData['panel_name'] ?? null,
-                    ]);
+            // 4. Assign Existing Panelists (supports both flat IDs and object maps)
+            $panelistInputs = $request->input('panelists', []);
+            if (!empty($panelistInputs)) {
+                foreach ($panelistInputs as $pData) {
+                    $userId = is_array($pData) ? ($pData['user_id'] ?? null) : $pData;
+                    if ($userId && User::where('id', $userId)->exists()) {
+                        $user = User::find($userId);
+                        $panelName = is_array($pData) ? ($pData['panel_name'] ?? $user?->panel) : $user?->panel;
+                        AssessmentAssignment::create([
+                            'assessment_id' => $assessment->id,
+                            'user_id' => $userId,
+                            'role' => 'panelist',
+                            'panel_name' => $panelName ?: 'A',
+                        ]);
+                    }
                 }
             }
 
@@ -206,20 +210,26 @@ class AssessmentController extends Controller
                         'assessment_id' => $assessment->id,
                         'user_id' => $newUser->id,
                         'role' => 'panelist',
-                        'panel_name' => $npData['panel_name'] ?? null,
+                        'panel_name' => $npData['panel_name'] ?? 'A',
                     ]);
                 }
             }
 
-            // 6. Assign Existing Candidates
-            if (!empty($validated['candidates'])) {
-                foreach ($validated['candidates'] as $cData) {
-                    AssessmentAssignment::create([
-                        'assessment_id' => $assessment->id,
-                        'candidate_id' => $cData['candidate_id'],
-                        'role' => 'candidate',
-                        'panel_name' => $cData['panel_name'] ?? null,
-                    ]);
+            // 6. Assign Existing Candidates (supports both flat IDs and object maps)
+            $candidateInputs = $request->input('candidates', []);
+            if (!empty($candidateInputs)) {
+                foreach ($candidateInputs as $cData) {
+                    $candidateId = is_array($cData) ? ($cData['candidate_id'] ?? null) : $cData;
+                    if ($candidateId && Candidate::where('id', $candidateId)->exists()) {
+                        $candidate = Candidate::find($candidateId);
+                        $panelName = is_array($cData) ? ($cData['panel_name'] ?? $candidate?->panel) : $candidate?->panel;
+                        AssessmentAssignment::create([
+                            'assessment_id' => $assessment->id,
+                            'candidate_id' => $candidateId,
+                            'role' => 'candidate',
+                            'panel_name' => $panelName ?: 'A',
+                        ]);
+                    }
                 }
             }
 
@@ -236,7 +246,7 @@ class AssessmentController extends Controller
                         'assessment_id' => $assessment->id,
                         'candidate_id' => $newCandidate->id,
                         'role' => 'candidate',
-                        'panel_name' => $ncData['panel_name'] ?? null,
+                        'panel_name' => $ncData['panel_name'] ?? 'A',
                     ]);
                 }
             }
@@ -252,8 +262,9 @@ class AssessmentController extends Controller
     public function show(Assessment $assessment): View
     {
         $results = $this->evaluationService->compileAssessmentResults($assessment);
+        $allCandidates = Candidate::orderBy('name')->get();
 
-        return view('assessments.show', compact('assessment', 'results'));
+        return view('assessments.show', compact('assessment', 'results', 'allCandidates'));
     }
 
     /**
@@ -300,11 +311,16 @@ class AssessmentController extends Controller
             'passing_threshold' => 'nullable|numeric|min:0',
             'rules_json' => 'nullable|string',
             'panelists' => 'nullable|array',
-            'panelists.*.user_id' => 'required_with:panelists|exists:users,id',
-            'panelists.*.panel_name' => 'nullable|string|max:50',
+            'new_panelists' => 'nullable|array',
+            'new_panelists.*.name' => 'required_with:new_panelists|string|max:255',
+            'new_panelists.*.email' => 'required_with:new_panelists|email|unique:users,email',
+            'new_panelists.*.password' => 'required_with:new_panelists|string|min:6',
+            'new_panelists.*.panel_name' => 'nullable|string|max:50',
             'candidates' => 'nullable|array',
-            'candidates.*.candidate_id' => 'required_with:candidates|exists:candidates,id',
-            'candidates.*.panel_name' => 'nullable|string|max:50',
+            'new_candidates' => 'nullable|array',
+            'new_candidates.*.name' => 'required_with:new_candidates|string|max:255',
+            'new_candidates.*.gender' => 'nullable|in:Male,Female',
+            'new_candidates.*.panel_name' => 'nullable|string|max:50',
             'questions' => 'required|array|min:1',
             'questions.*.question_text' => 'required|string',
             'questions.*.type' => 'required|in:scale,text,multiple_choice,boolean',
@@ -315,7 +331,7 @@ class AssessmentController extends Controller
             'questions.*.options.*.option_value' => 'nullable|numeric',
         ]);
 
-        DB::transaction(function () use ($validated, $assessment) {
+        DB::transaction(function () use ($validated, $assessment, $request) {
             // 1. Update Assessment
             $accessKey = !empty($validated['access_key']) ? Str::upper($validated['access_key']) : ($assessment->access_key ?: 'KEY-' . Str::upper(Str::random(6)));
 
@@ -372,27 +388,80 @@ class AssessmentController extends Controller
                 }
             }
 
-            // 4. Sync Assignments
+            // 4. Sync Assignments (delete old and re-attach)
             $assessment->assignments()->delete();
 
-            if (!empty($validated['panelists'])) {
-                foreach ($validated['panelists'] as $pData) {
+            // Existing Panelists
+            $panelistInputs = $request->input('panelists', []);
+            if (!empty($panelistInputs)) {
+                foreach ($panelistInputs as $pData) {
+                    $userId = is_array($pData) ? ($pData['user_id'] ?? null) : $pData;
+                    if ($userId && User::where('id', $userId)->exists()) {
+                        $user = User::find($userId);
+                        $panelName = is_array($pData) ? ($pData['panel_name'] ?? $user?->panel) : $user?->panel;
+                        AssessmentAssignment::create([
+                            'assessment_id' => $assessment->id,
+                            'user_id' => $userId,
+                            'role' => 'panelist',
+                            'panel_name' => $panelName ?: 'A',
+                        ]);
+                    }
+                }
+            }
+
+            // New Panelists
+            if (!empty($validated['new_panelists'])) {
+                foreach ($validated['new_panelists'] as $npData) {
+                    $newUser = User::create([
+                        'name' => $npData['name'],
+                        'email' => $npData['email'],
+                        'password' => Hash::make($npData['password']),
+                        'role' => 'panelist',
+                        'panelist_name' => $npData['name'],
+                        'panel' => $npData['panel_name'] ?? 'A',
+                    ]);
+
                     AssessmentAssignment::create([
                         'assessment_id' => $assessment->id,
-                        'user_id' => $pData['user_id'],
+                        'user_id' => $newUser->id,
                         'role' => 'panelist',
-                        'panel_name' => $pData['panel_name'] ?? null,
+                        'panel_name' => $npData['panel_name'] ?? 'A',
                     ]);
                 }
             }
 
-            if (!empty($validated['candidates'])) {
-                foreach ($validated['candidates'] as $cData) {
+            // Existing Candidates
+            $candidateInputs = $request->input('candidates', []);
+            if (!empty($candidateInputs)) {
+                foreach ($candidateInputs as $cData) {
+                    $candidateId = is_array($cData) ? ($cData['candidate_id'] ?? null) : $cData;
+                    if ($candidateId && Candidate::where('id', $candidateId)->exists()) {
+                        $candidate = Candidate::find($candidateId);
+                        $panelName = is_array($cData) ? ($cData['panel_name'] ?? $candidate?->panel) : $candidate?->panel;
+                        AssessmentAssignment::create([
+                            'assessment_id' => $assessment->id,
+                            'candidate_id' => $candidateId,
+                            'role' => 'candidate',
+                            'panel_name' => $panelName ?: 'A',
+                        ]);
+                    }
+                }
+            }
+
+            // New Candidates
+            if (!empty($validated['new_candidates'])) {
+                foreach ($validated['new_candidates'] as $ncData) {
+                    $newCandidate = Candidate::create([
+                        'name' => $ncData['name'],
+                        'gender' => $ncData['gender'] ?? 'Male',
+                        'panel' => $ncData['panel_name'] ?? 'A',
+                    ]);
+
                     AssessmentAssignment::create([
                         'assessment_id' => $assessment->id,
-                        'candidate_id' => $cData['candidate_id'],
+                        'candidate_id' => $newCandidate->id,
                         'role' => 'candidate',
-                        'panel_name' => $cData['panel_name'] ?? null,
+                        'panel_name' => $ncData['panel_name'] ?? 'A',
                     ]);
                 }
             }
@@ -522,5 +591,124 @@ class AssessmentController extends Controller
 
         return redirect()->route('assessments.show', $assessment->id)
             ->with('success', 'Evaluation submitted successfully!');
+    }
+
+    /**
+     * Download custom assessment spreadsheet template.
+     */
+    public function downloadTemplate(Request $request, Assessment $assessment, ExcelImportExportService $excelService): StreamedResponse
+    {
+        $format = $request->query('format', 'xlsx');
+        return $excelService->downloadAssessmentTemplate($assessment, $format);
+    }
+
+    /**
+     * Import results from Excel or CSV for this specific assessment.
+     */
+    public function importResults(Request $request, Assessment $assessment, ExcelImportExportService $excelService): RedirectResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv,txt|max:10240',
+        ]);
+
+        $result = $excelService->importAssessmentResults($assessment, $request->file('file'));
+
+        if (!$result['success']) {
+            return redirect()->back()
+                ->with('error', implode(' ', $result['errors'] ?? ['Failed to import results.']));
+        }
+
+        return redirect()->route('assessments.show', [$assessment->id, 'tab' => 'results'])
+            ->with('success', $result['message']);
+    }
+
+    /**
+     * Add existing or new candidates to this assessment.
+     */
+    public function addCandidates(Request $request, Assessment $assessment): RedirectResponse
+    {
+        $currentUser = auth()->user() ?: User::find(session('admin_user_id'));
+        if ($currentUser && ! $currentUser->isSuper()) {
+            abort(403, 'Only administrators can assign candidates.');
+        }
+
+        $validated = $request->validate([
+            'candidate_ids' => 'nullable|array',
+            'candidate_ids.*' => 'exists:candidates,id',
+            'panel_name' => 'nullable|string|max:50',
+            'new_candidate_name' => 'nullable|string|max:255',
+            'new_candidate_gender' => 'nullable|in:Male,Female',
+            'new_candidate_panel' => 'nullable|string|max:50',
+        ]);
+
+        $addedCount = 0;
+
+        DB::transaction(function () use ($assessment, $validated, &$addedCount) {
+            // 1. Assign selected existing candidates
+            if (!empty($validated['candidate_ids'])) {
+                foreach ($validated['candidate_ids'] as $candidateId) {
+                    $existing = AssessmentAssignment::where('assessment_id', $assessment->id)
+                        ->where('candidate_id', $candidateId)
+                        ->first();
+
+                    if (!$existing) {
+                        $cand = Candidate::find($candidateId);
+                        AssessmentAssignment::create([
+                            'assessment_id' => $assessment->id,
+                            'candidate_id' => $candidateId,
+                            'role' => 'candidate',
+                            'panel_name' => $validated['panel_name'] ?: ($cand?->panel ?: 'A'),
+                        ]);
+                        $addedCount++;
+                    }
+                }
+            }
+
+            // 2. Register & assign new candidate if provided
+            if (!empty($validated['new_candidate_name'])) {
+                $newCand = Candidate::create([
+                    'name' => trim($validated['new_candidate_name']),
+                    'gender' => $validated['new_candidate_gender'] ?? 'Female',
+                    'panel' => $validated['new_candidate_panel'] ?? 'A',
+                ]);
+
+                AssessmentAssignment::create([
+                    'assessment_id' => $assessment->id,
+                    'candidate_id' => $newCand->id,
+                    'role' => 'candidate',
+                    'panel_name' => $validated['new_candidate_panel'] ?? 'A',
+                ]);
+                $addedCount++;
+            }
+        });
+
+        return redirect()->route('assessments.show', [$assessment->id, 'tab' => 'candidates'])
+            ->with('success', "{$addedCount} candidate(s) successfully assigned to this assessment.");
+    }
+
+    /**
+     * Remove candidate from this assessment.
+     */
+    public function removeCandidate(Assessment $assessment, Candidate $candidate): RedirectResponse
+    {
+        $currentUser = auth()->user() ?: User::find(session('admin_user_id'));
+        if ($currentUser && ! $currentUser->isSuper()) {
+            abort(403, 'Only administrators can remove candidates.');
+        }
+
+        DB::transaction(function () use ($assessment, $candidate) {
+            // Remove assignment
+            AssessmentAssignment::where('assessment_id', $assessment->id)
+                ->where('candidate_id', $candidate->id)
+                ->delete();
+
+            // Clean up evaluation scores for this assessment and candidate
+            EvaluationScore::where('assessment_id', $assessment->id)
+                ->where('candidate_id', $candidate->id)
+                ->delete();
+        });
+
+        return redirect()->route('assessments.show', [$assessment->id, 'tab' => 'candidates'])
+            ->with('success', "Candidate '{$candidate->name}' removed from this assessment.");
     }
 }

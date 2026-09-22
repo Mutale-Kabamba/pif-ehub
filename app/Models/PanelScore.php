@@ -27,6 +27,19 @@ class PanelScore extends Model
     ];
 
     /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'crit1_motivation' => 'integer',
+        'crit2_availability' => 'integer',
+        'crit3_resilience' => 'integer',
+        'crit4_communication' => 'integer',
+        'is_valid' => 'boolean',
+    ];
+
+    /**
      * Get the candidate that owns this panel score.
      */
     public function candidate(): BelongsTo
