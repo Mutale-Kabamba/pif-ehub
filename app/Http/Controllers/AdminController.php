@@ -186,6 +186,7 @@ class AdminController extends Controller
     {
         $totalResponses = SurveyResponse::count();
         $baselineCount  = SurveyResponse::where('survey_type', 'baseline')->count();
+        $midlineCount   = SurveyResponse::where('survey_type', 'midline')->count();
         $endlineCount   = SurveyResponse::where('survey_type', 'endline')->count();
 
         // Compute averages per question, grouped by survey_type
@@ -209,6 +210,7 @@ class AdminController extends Controller
         foreach ($quantKeys as $key) {
             $avgScores[$key] = [
                 'baseline' => isset($rawScores['baseline'][$key]) ? round((float) $rawScores['baseline'][$key], 2) : 0,
+                'midline'  => isset($rawScores['midline'][$key])  ? round((float) $rawScores['midline'][$key], 2)  : 0,
                 'endline'  => isset($rawScores['endline'][$key])  ? round((float) $rawScores['endline'][$key], 2)  : 0,
             ];
         }
@@ -216,6 +218,7 @@ class AdminController extends Controller
         return [
             'totalResponses' => $totalResponses,
             'baselineCount'  => $baselineCount,
+            'midlineCount'   => $midlineCount,
             'endlineCount'   => $endlineCount,
             'avgScores'      => $avgScores,
             'quantQuestions' => $this->quantQuestions,

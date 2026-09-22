@@ -100,6 +100,8 @@ class AssessmentController extends Controller
             'max_panelists' => 'nullable|integer|min:1',
             'score_cap' => 'nullable|numeric|min:0',
             'passing_threshold' => 'nullable|numeric|min:0',
+            'survey_stage' => 'nullable|in:baseline,midline,endline,general',
+            'is_anonymous' => 'nullable|boolean',
             'rules_json' => 'nullable|string',
             'panelists' => 'nullable|array',
             'new_panelists' => 'nullable|array',
@@ -147,11 +149,17 @@ class AssessmentController extends Controller
                 $rulesData['number_of_panels'] = (int) $validated['number_of_panels'];
             }
 
+            $isSurvey = ($validated['type'] === 'survey');
+            if ($isSurvey) {
+                $rulesData['survey_stage'] = $request->input('survey_stage', 'baseline');
+                $rulesData['is_anonymous'] = $request->boolean('is_anonymous', true);
+            }
+
             AssessmentRule::create([
                 'assessment_id' => $assessment->id,
-                'max_panelists' => $validated['max_panelists'] ?? null,
-                'score_cap' => $validated['score_cap'] ?? null,
-                'passing_threshold' => $validated['passing_threshold'] ?? null,
+                'max_panelists' => $isSurvey ? null : ($validated['max_panelists'] ?? null),
+                'score_cap' => $isSurvey ? null : ($validated['score_cap'] ?? null),
+                'passing_threshold' => $isSurvey ? null : ($validated['passing_threshold'] ?? null),
                 'rules_json' => $rulesData,
             ]);
 
@@ -309,6 +317,8 @@ class AssessmentController extends Controller
             'max_panelists' => 'nullable|integer|min:1',
             'score_cap' => 'nullable|numeric|min:0',
             'passing_threshold' => 'nullable|numeric|min:0',
+            'survey_stage' => 'nullable|in:baseline,midline,endline,general',
+            'is_anonymous' => 'nullable|boolean',
             'rules_json' => 'nullable|string',
             'panelists' => 'nullable|array',
             'new_panelists' => 'nullable|array',
@@ -355,12 +365,18 @@ class AssessmentController extends Controller
                 $rulesData['number_of_panels'] = (int) $validated['number_of_panels'];
             }
 
+            $isSurvey = ($validated['type'] === 'survey');
+            if ($isSurvey) {
+                $rulesData['survey_stage'] = $request->input('survey_stage', 'baseline');
+                $rulesData['is_anonymous'] = $request->boolean('is_anonymous', true);
+            }
+
             $assessment->rule()->updateOrCreate(
                 ['assessment_id' => $assessment->id],
                 [
-                    'max_panelists' => $validated['max_panelists'] ?? null,
-                    'score_cap' => $validated['score_cap'] ?? null,
-                    'passing_threshold' => $validated['passing_threshold'] ?? null,
+                    'max_panelists' => $isSurvey ? null : ($validated['max_panelists'] ?? null),
+                    'score_cap' => $isSurvey ? null : ($validated['score_cap'] ?? null),
+                    'passing_threshold' => $isSurvey ? null : ($validated['passing_threshold'] ?? null),
                     'rules_json' => $rulesData,
                 ]
             );

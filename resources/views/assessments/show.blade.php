@@ -40,17 +40,25 @@
         <div class="hub-header-badges" style="margin-top:10px;">
             <span class="badge {{ $statusBadgeClass }}">{{ $assessment->status }}</span>
             <span class="badge {{ $typeBadgeClass }}">{{ $assessment->type }}</span>
+            @if($results['is_survey'])
+                <span class="badge badge-purple">
+                    📌 {{ ucfirst($results['survey_stage']) }} Survey
+                </span>
+                <span class="badge {{ $results['is_anonymous'] ? 'badge-blue' : 'badge-teal' }}">
+                    {{ $results['is_anonymous'] ? '🔒 Anonymous Responses' : '🧑‍🎓 Identified Participants' }}
+                </span>
+            @endif
             @if($assessment->access_key)
                 <span class="badge badge-gray" style="font-family:monospace; letter-spacing:1px;">
                     🔑 {{ $assessment->access_key }}
                 </span>
             @endif
-            @if($assessment->rule?->passing_threshold !== null)
+            @if(!$results['is_survey'] && $assessment->rule?->passing_threshold !== null)
                 <span class="badge badge-teal">
                     Pass: {{ number_format($assessment->rule->passing_threshold, 1) }}
                 </span>
             @endif
-            @if($assessment->rule?->score_cap !== null)
+            @if(!$results['is_survey'] && $assessment->rule?->score_cap !== null)
                 <span class="badge badge-orange">
                     Cap: {{ number_format($assessment->rule->score_cap, 1) }}
                 </span>
@@ -62,10 +70,17 @@
         <button type="button" class="btn btn-sm" style="background:#2563eb; color:white;" onclick="openModal('importResultsModal')">
             📥 Import Results
         </button>
-        <a href="{{ route('assessments.evaluate', $assessment->id) }}"
-           class="btn btn-sm" style="background:#0f766e; color:white;">
-            ✏️ Grade / Evaluate
-        </a>
+        @if($results['is_survey'])
+            <a href="{{ route('surveys.take', $assessment->id) }}"
+               class="btn btn-sm" style="background:#7c3aed; color:white;" target="_blank">
+                📋 Take / Open Survey ↗
+            </a>
+        @else
+            <a href="{{ route('assessments.evaluate', $assessment->id) }}"
+               class="btn btn-sm" style="background:#0f766e; color:white;">
+                ✏️ Grade / Evaluate
+            </a>
+        @endif
         @if($isSuper)
             <a href="{{ route('assessments.edit', $assessment->id) }}"
                class="btn btn-outline btn-sm">⚙️ Edit</a>
@@ -84,156 +99,296 @@
 @endif
 
 {{-- ========== METRIC OVERVIEW ========== --}}
-<div class="metric-cards" style="margin-bottom:24px;">
-    <div class="metric-card">
-        <div class="value">{{ $results['total_candidates'] }}</div>
-        <div class="label">Candidates</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:#2563eb;">{{ $results['total_panelists'] }}</div>
-        <div class="label">Evaluators</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:#7c3aed;">{{ $results['total_questions'] }}</div>
-        <div class="label">Questions</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:var(--green-primary);">
-            {{ collect($results['candidate_results'])->where('passed', true)->count() }}
+@if($results['is_survey'])
+    {{-- Survey M&E Metric Cards --}}
+    <div class="metric-cards" style="margin-bottom:24px;">
+        <div class="metric-card">
+            <div class="value" style="color:#2563eb;">{{ $results['total_evaluations_submitted'] }}</div>
+            <div class="label">Total Responses</div>
         </div>
-        <div class="label">Passed</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:#dc2626;">
-            {{ collect($results['candidate_results'])->where('passed', false)->count() }}
+        <div class="metric-card">
+            <div class="value" style="color:#7c3aed;">{{ ucfirst($results['survey_stage']) }}</div>
+            <div class="label">M&amp;E Stage</div>
         </div>
-        <div class="label">Failed</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:#c2410c;">
-            {{ collect($results['candidate_results'])->where('passed', null)->count() }}
+        <div class="metric-card">
+            <div class="value">{{ $results['total_questions'] }}</div>
+            <div class="label">Questions</div>
         </div>
-        <div class="label">Ungraded</div>
+        <div class="metric-card">
+            <div class="value" style="color:var(--green-primary);">
+                {{ $results['overall_survey_average'] > 0 ? number_format($results['overall_survey_average'], 2) : '—' }}
+            </div>
+            <div class="label">Avg Rating (1-5)</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#0284c7;">
+                {{ count($results['qualitative_feedback']) }}
+            </div>
+            <div class="label">Qualitative Topics</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#64748b; font-size:1.1rem;">
+                {{ $results['is_anonymous'] ? 'Anonymous' : 'Identified' }}
+            </div>
+            <div class="label">Response Mode</div>
+        </div>
     </div>
-</div>
+@else
+    {{-- Graded Assessment Metric Cards --}}
+    <div class="metric-cards" style="margin-bottom:24px;">
+        <div class="metric-card">
+            <div class="value">{{ $results['total_candidates'] }}</div>
+            <div class="label">Candidates</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#2563eb;">{{ $results['total_panelists'] }}</div>
+            <div class="label">Evaluators</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#7c3aed;">{{ $results['total_questions'] }}</div>
+            <div class="label">Questions</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:var(--green-primary);">
+                {{ collect($results['candidate_results'])->where('passed', true)->count() }}
+            </div>
+            <div class="label">Passed</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#dc2626;">
+                {{ collect($results['candidate_results'])->where('passed', false)->count() }}
+            </div>
+            <div class="label">Failed</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#c2410c;">
+                {{ collect($results['candidate_results'])->where('passed', null)->count() }}
+            </div>
+            <div class="label">Ungraded</div>
+        </div>
+    </div>
+@endif
 
 {{-- ========== PER-ASSESSMENT HUB TABS ========== --}}
 <div class="hub-tabs">
     <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'results']) }}"
        class="hub-tab {{ $activeTab === 'results' ? 'active' : '' }}">
-        🏆 Results & Leaderboard
+        {{ $results['is_survey'] ? '📊 Survey Analysis & Responses' : '🏆 Results & Leaderboard' }}
     </a>
     <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'questions']) }}"
        class="hub-tab {{ $activeTab === 'questions' ? 'active' : '' }}">
-        ❓ Questions & Criteria
+        ❓ Questions &amp; Criteria
     </a>
     @if($isSuper)
-        <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'panelists']) }}"
-           class="hub-tab {{ $activeTab === 'panelists' ? 'active' : '' }}">
-            👥 Panelists
-        </a>
-        <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'candidates']) }}"
-           class="hub-tab {{ $activeTab === 'candidates' ? 'active' : '' }}">
-            🧑‍🎓 Candidates
-        </a>
+        @if(!$results['is_survey'])
+            <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'panelists']) }}"
+               class="hub-tab {{ $activeTab === 'panelists' ? 'active' : '' }}">
+                👥 Panelists
+            </a>
+            <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'candidates']) }}"
+               class="hub-tab {{ $activeTab === 'candidates' ? 'active' : '' }}">
+                🧑‍🎓 Candidates
+            </a>
+        @endif
         <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'rules']) }}"
            class="hub-tab {{ $activeTab === 'rules' ? 'active' : '' }}">
-            📐 Rules & Config
+            📐 {{ $results['is_survey'] ? 'Survey Settings' : 'Rules & Config' }}
         </a>
     @endif
 </div>
 
 {{-- ======================================================
-     TAB: RESULTS & LEADERBOARD
+     TAB: RESULTS & LEADERBOARD (OR SURVEY ANALYSIS)
 ====================================================== --}}
 @if($activeTab === 'results')
-    <div class="card">
-        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-            <div>
-                <span class="card-title">🏆 Candidate Evaluation Leaderboard</span>
-                <div class="info-box info" style="margin:4px 0 0; padding:4px 12px; font-size:0.75rem; border-radius:100px; display:inline-block;">
-                    <strong>Formula:</strong> Avg<sub>panelists</sub>(Σ question_score × weight), capped at limit
+    @if($results['is_survey'])
+        {{-- ======================================================
+             SURVEY SPECIFIC ANALYSIS VIEW (NO PASS/FAIL)
+        ====================================================== --}}
+        <div style="display:grid; gap:20px;">
+            {{-- Question-by-Question Rating Analysis --}}
+            <div class="card">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <span class="card-title">📈 Question-by-Question M&amp;E Ratings</span>
+                        <div class="info-box info" style="margin:4px 0 0; padding:4px 12px; font-size:0.75rem; border-radius:100px; display:inline-block;">
+                            <strong>M&amp;E Note:</strong> Surveys are for tracking participant baseline, midline, and endline feedback without pass/fail cutoffs.
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'xlsx']) }}"
+                           class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                            📥 Template (.xlsx)
+                        </a>
+                        <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'csv']) }}"
+                           class="btn btn-ghost btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                            .csv
+                        </a>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('importResultsModal')" style="display:inline-flex; align-items:center; gap:6px;">
+                            📤 Import Results
+                        </button>
+                    </div>
+                </div>
+
+                <div style="padding:20px; display:grid; gap:16px;">
+                    @forelse($results['survey_question_stats'] as $qStat)
+                        <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; gap:12px;">
+                                <div style="font-weight:700; color:var(--text-primary); font-size:0.92rem;">
+                                    {{ $qStat['question_text'] }}
+                                </div>
+                                @if($qStat['avg_score'] !== null)
+                                    <div style="font-size:1.1rem; font-weight:800; color:var(--green-dark); flex-shrink:0;">
+                                        {{ number_format($qStat['avg_score'], 2) }} <span style="font-size:0.75rem; color:var(--text-muted);">/ 5.0</span>
+                                    </div>
+                                @else
+                                    <span class="badge badge-gray" style="font-size:0.75rem;">Text Feedback</span>
+                                @endif
+                            </div>
+
+                            @if($qStat['type'] === 'scale' && $qStat['response_count'] > 0)
+                                <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-top:10px;">
+                                    @for($r = 1; $r <= 5; $r++)
+                                        @php
+                                            $count = $qStat['distribution'][$r] ?? 0;
+                                            $pct = $qStat['response_count'] > 0 ? round(($count / $qStat['response_count']) * 100) : 0;
+                                        @endphp
+                                        <div style="background:#fff; border:1px solid var(--border); border-radius:4px; padding:6px 8px; text-align:center;">
+                                            <div style="font-size:0.72rem; color:var(--text-muted);">Rating {{ $r }}</div>
+                                            <div style="font-weight:700; font-size:0.9rem; color:var(--text-primary);">{{ $count }} <span style="font-size:0.7rem; color:var(--text-muted);">({{ $pct }}%)</span></div>
+                                            <div style="height:4px; background:#e5e7eb; border-radius:2px; margin-top:4px; overflow:hidden;">
+                                                <div style="height:100%; width:{{ $pct }}%; background:var(--green-primary);"></div>
+                                            </div>
+                                        </div>
+                                    @endfor
+                                </div>
+                            @endif
+                        </div>
+                    @empty
+                        <div style="text-align:center; padding:32px; color:var(--text-muted);">
+                            No survey questions configured yet.
+                        </div>
+                    @endforelse
                 </div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'xlsx']) }}"
-                   class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
-                    📥 Template (.xlsx)
-                </a>
-                <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'csv']) }}"
-                   class="btn btn-ghost btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
-                    .csv
-                </a>
-                <button type="button" class="btn btn-primary btn-sm" onclick="openModal('importResultsModal')" style="display:inline-flex; align-items:center; gap:6px;">
-                    📤 Import Results
-                </button>
+
+            {{-- Qualitative Feedback Feed --}}
+            @if(!empty($results['qualitative_feedback']))
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">💬 Qualitative Participant Feedback</span>
+                    </div>
+                    <div style="padding:20px; display:grid; gap:16px;">
+                        @foreach($results['qualitative_feedback'] as $qFeed)
+                            <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px;">
+                                <div style="font-weight:700; color:var(--text-primary); font-size:0.9rem; margin-bottom:12px;">
+                                    ❓ {{ $qFeed['question_text'] }}
+                                </div>
+                                <div style="display:grid; gap:8px;">
+                                    @foreach($qFeed['responses'] as $respText)
+                                        <div style="background:#fff; border-left:3px solid var(--green-primary); padding:10px 14px; border-radius:4px; font-size:0.85rem; color:var(--text-primary); line-height:1.4;">
+                                            "{{ $respText }}"
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+        </div>
+    @else
+        {{-- ======================================================
+             GRADED CANDIDATE EVALUATION LEADERBOARD VIEW
+        ====================================================== --}}
+        <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <span class="card-title">🏆 Candidate Evaluation Leaderboard</span>
+                    <div class="info-box info" style="margin:4px 0 0; padding:4px 12px; font-size:0.75rem; border-radius:100px; display:inline-block;">
+                        <strong>Formula:</strong> Avg<sub>panelists</sub>(Σ question_score × weight), capped at limit
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'xlsx']) }}"
+                       class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                        📥 Template (.xlsx)
+                    </a>
+                    <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'csv']) }}"
+                       class="btn btn-ghost btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                        .csv
+                    </a>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('importResultsModal')" style="display:inline-flex; align-items:center; gap:6px;">
+                        📤 Import Results
+                    </button>
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">Rank</th>
+                            <th>Candidate</th>
+                            <th>Panel</th>
+                            <th style="text-align:center;">Evaluations</th>
+                            <th style="text-align:right;">Weighted Total</th>
+                            <th style="text-align:right;">Final Score</th>
+                            <th style="text-align:center;">Status</th>
+                            <th style="text-align:right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($results['candidate_results'] as $idx => $res)
+                            <tr class="{{ $res['passed'] === true ? 'accepted' : '' }}">
+                                <td style="font-weight:700; color:var(--text-muted);">
+                                    #{{ $idx + 1 }}
+                                </td>
+                                <td>
+                                    <strong>{{ $res['candidate']->name }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge badge-gray">Panel {{ $res['candidate']->panel }}</span>
+                                </td>
+                                <td style="text-align:center;">
+                                    <span style="font-weight:600;">{{ $res['evaluator_count'] }}</span>
+                                </td>
+                                <td style="text-align:right; font-weight:600; color:var(--text-secondary);">
+                                    {{ number_format($res['weighted_total'], 2) }}
+                                </td>
+                                <td style="text-align:right; font-weight:800; font-size:1.1rem; color:var(--green-primary);">
+                                    {{ number_format($res['final_score'], 2) }}
+                                </td>
+                                <td style="text-align:center;">
+                                    @if($res['passed'] === true)
+                                        <span class="badge badge-green">PASSED</span>
+                                    @elseif($res['passed'] === false)
+                                        <span class="badge badge-red">FAILED</span>
+                                    @else
+                                        <span class="badge badge-gray">UNGRADED</span>
+                                    @endif
+                                </td>
+                                <td style="text-align:right;">
+                                    <a href="{{ route('assessments.evaluate', [$assessment->id, 'candidate_id' => $res['candidate']->id]) }}"
+                                       class="btn btn-primary btn-sm">Grade</a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">
+                                    No candidates assigned or evaluated yet.
+                                    @if($isSuper)
+                                        <a href="javascript:void(0)" onclick="openModal('addCandidatesModal')" style="color:var(--green-primary); font-weight:600;">+ Add candidates now</a>
+                                        or
+                                        <a href="javascript:void(0)" onclick="openModal('importResultsModal')" style="color:#2563eb; font-weight:600;">📥 Import Results from Excel</a>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th style="width:50px;">Rank</th>
-                        <th>Candidate</th>
-                        <th>Panel</th>
-                        <th style="text-align:center;">Evaluations</th>
-                        <th style="text-align:right;">Weighted Total</th>
-                        <th style="text-align:right;">Final Score</th>
-                        <th style="text-align:center;">Status</th>
-                        <th style="text-align:right;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($results['candidate_results'] as $idx => $res)
-                        <tr class="{{ $res['passed'] === true ? 'accepted' : '' }}">
-                            <td style="font-weight:700; color:var(--text-muted);">
-                                #{{ $idx + 1 }}
-                            </td>
-                            <td>
-                                <strong>{{ $res['candidate']->name }}</strong>
-                            </td>
-                            <td>
-                                <span class="badge badge-gray">Panel {{ $res['candidate']->panel }}</span>
-                            </td>
-                            <td style="text-align:center;">
-                                <span style="font-weight:600;">{{ $res['evaluator_count'] }}</span>
-                            </td>
-                            <td style="text-align:right; font-weight:600; color:var(--text-secondary);">
-                                {{ number_format($res['weighted_total'], 2) }}
-                            </td>
-                            <td style="text-align:right; font-weight:800; font-size:1.1rem; color:var(--green-primary);">
-                                {{ number_format($res['final_score'], 2) }}
-                            </td>
-                            <td style="text-align:center;">
-                                @if($res['passed'] === true)
-                                    <span class="badge badge-green">PASSED</span>
-                                @elseif($res['passed'] === false)
-                                    <span class="badge badge-red">FAILED</span>
-                                @else
-                                    <span class="badge badge-gray">UNGRADED</span>
-                                @endif
-                            </td>
-                            <td style="text-align:right;">
-                                <a href="{{ route('assessments.evaluate', [$assessment->id, 'candidate_id' => $res['candidate']->id]) }}"
-                                   class="btn btn-primary btn-sm">Grade</a>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">
-                                No candidates assigned or evaluated yet.
-                                @if($isSuper)
-                                    <a href="javascript:void(0)" onclick="openModal('addCandidatesModal')" style="color:var(--green-primary); font-weight:600;">+ Add candidates now</a>
-                                    or
-                                    <a href="javascript:void(0)" onclick="openModal('importResultsModal')" style="color:#2563eb; font-weight:600;">📥 Import Results from Excel</a>
-                                @endif
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
+    @endif
 @endif
 
 {{-- ======================================================
@@ -458,46 +613,67 @@
 ====================================================== --}}
 @if($activeTab === 'rules' && $isSuper)
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
-        {{-- Scoring Rules Card --}}
+        {{-- Scoring / M&E Rules Card --}}
         <div class="card">
             <div class="card-header">
-                <span class="card-title">📐 Scoring Rules</span>
+                <span class="card-title">{{ $results['is_survey'] ? '📋 M&E Survey Configuration' : '📐 Scoring Rules' }}</span>
                 <a href="{{ route('assessments.edit', $assessment->id) }}" class="btn btn-outline btn-sm">Edit</a>
             </div>
             <div class="card-body">
                 @if($assessment->rule)
                     <table style="width:100%; font-size:0.9rem; border-collapse:collapse;">
-                        <tr style="border-bottom:1px solid var(--border);">
-                            <td style="padding:10px 0; color:var(--text-secondary);">Max Panelists</td>
-                            <td style="padding:10px 0; font-weight:600; text-align:right;">
-                                {{ $assessment->rule->max_panelists ?? 'Unlimited' }}
-                            </td>
-                        </tr>
-                        <tr style="border-bottom:1px solid var(--border);">
-                            <td style="padding:10px 0; color:var(--text-secondary);">Score Cap</td>
-                            <td style="padding:10px 0; font-weight:600; text-align:right;">
-                                {{ $assessment->rule->score_cap !== null ? number_format($assessment->rule->score_cap, 2) : 'None' }}
-                            </td>
-                        </tr>
-                        <tr style="border-bottom:1px solid var(--border);">
-                            <td style="padding:10px 0; color:var(--text-secondary);">Passing Threshold</td>
-                            <td style="padding:10px 0; font-weight:600; text-align:right;">
-                                {{ $assessment->rule->passing_threshold !== null ? number_format($assessment->rule->passing_threshold, 2) : 'N/A' }}
-                            </td>
-                        </tr>
-                        @if(!empty($assessment->rule->rules_json['number_of_panels']))
-                            <tr>
-                                <td style="padding:10px 0; color:var(--text-secondary);">Number of Panels</td>
-                                <td style="padding:10px 0; font-weight:600; text-align:right;">
-                                    {{ $assessment->rule->rules_json['number_of_panels'] }}
+                        @if($results['is_survey'])
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">M&amp;E Survey Stage</td>
+                                <td style="padding:10px 0; font-weight:700; text-align:right;">
+                                    <span class="badge badge-purple">{{ ucfirst($results['survey_stage']) }} Survey</span>
                                 </td>
                             </tr>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Response Mode</td>
+                                <td style="padding:10px 0; font-weight:600; text-align:right;">
+                                    {{ $results['is_anonymous'] ? '🔒 Anonymous (No names recorded)' : '🧑‍🎓 Identified Responses' }}
+                                </td>
+                            </tr>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Pass / Fail Scoring</td>
+                                <td style="padding:10px 0; font-weight:600; text-align:right; color:var(--text-muted);">
+                                    Disabled (M&amp;E Analytics Only)
+                                </td>
+                            </tr>
+                        @else
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Max Panelists</td>
+                                <td style="padding:10px 0; font-weight:600; text-align:right;">
+                                    {{ $assessment->rule->max_panelists ?? 'Unlimited' }}
+                                </td>
+                            </tr>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Score Cap</td>
+                                <td style="padding:10px 0; font-weight:600; text-align:right;">
+                                    {{ $assessment->rule->score_cap !== null ? number_format($assessment->rule->score_cap, 2) : 'None' }}
+                                </td>
+                            </tr>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Passing Threshold</td>
+                                <td style="padding:10px 0; font-weight:600; text-align:right;">
+                                    {{ $assessment->rule->passing_threshold !== null ? number_format($assessment->rule->passing_threshold, 2) : 'N/A' }}
+                                </td>
+                            </tr>
+                            @if(!empty($assessment->rule->rules_json['number_of_panels']))
+                                <tr>
+                                    <td style="padding:10px 0; color:var(--text-secondary);">Number of Panels</td>
+                                    <td style="padding:10px 0; font-weight:600; text-align:right;">
+                                        {{ $assessment->rule->rules_json['number_of_panels'] }}
+                                    </td>
+                                </tr>
+                            @endif
                         @endif
                     </table>
 
                     @if(!empty($assessment->rule->rules_json) && count($assessment->rule->rules_json) > 0)
                         <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
-                            <div style="font-size:0.78rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Extra Rules JSON</div>
+                            <div style="font-size:0.78rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Rules &amp; Parameters JSON</div>
                             <pre style="background:var(--surface-alt); padding:12px; border-radius:var(--radius-sm); font-size:0.78rem; overflow-x:auto; border:1px solid var(--border);">{{ json_encode($assessment->rule->rules_json, JSON_PRETTY_PRINT) }}</pre>
                         </div>
                     @endif

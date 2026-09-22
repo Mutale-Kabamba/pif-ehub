@@ -1,8 +1,8 @@
-@extends('layouts.app')
 
-@section('title', 'Student Survey Gallery — Play It Forward')
 
-@section('content')
+<?php $__env->startSection('title', 'Student Survey Gallery — Play It Forward'); ?>
+
+<?php $__env->startSection('content'); ?>
 
 <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
     <div>
@@ -11,21 +11,21 @@
             Select an active survey below and enter your unique access key to begin.
         </p>
     </div>
-    <a href="{{ route('landing') }}" class="btn btn-ghost btn-sm">← Back to Home</a>
+    <a href="<?php echo e(route('landing')); ?>" class="btn btn-ghost btn-sm">← Back to Home</a>
 </div>
 
-@if(session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
-@endif
+<?php if(session('success')): ?>
+    <div class="alert alert-success"><?php echo e(session('success')); ?></div>
+<?php endif; ?>
 
-@if(session('key_error'))
-    <div class="alert alert-error">{{ session('key_error') }}</div>
-@endif
+<?php if(session('key_error')): ?>
+    <div class="alert alert-error"><?php echo e(session('key_error')); ?></div>
+<?php endif; ?>
 
-{{-- Survey Cards Grid --}}
+
 <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:24px; margin-bottom:40px;">
-    @forelse($surveys as $survey)
-        @php
+    <?php $__empty_1 = true; $__currentLoopData = $surveys; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $survey): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+        <?php
             $typeIcon = match($survey->type) {
                 'interview'  => '🎤',
                 'survey'     => '📋',
@@ -39,59 +39,61 @@
             $rules = $survey->rule ? (is_array($survey->rule->rules_json) ? $survey->rule->rules_json : json_decode($survey->rule->rules_json, true)) : [];
             $surveyStage = $rules['survey_stage'] ?? null;
             $isAnonymous = !empty($rules['is_anonymous']);
-        @endphp
+        ?>
         <div class="survey-card">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
-                <div class="survey-card-icon">{{ $typeIcon }}</div>
+                <div class="survey-card-icon"><?php echo e($typeIcon); ?></div>
                 <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
-                    @if($survey->type === 'survey' && $surveyStage)
-                        @php
+                    <?php if($survey->type === 'survey' && $surveyStage): ?>
+                        <?php
                             $stageBadge = match($surveyStage) {
                                 'baseline' => 'badge-blue',
                                 'midline'  => 'badge-teal',
                                 'endline'  => 'badge-purple',
                                 default    => 'badge-gray',
                             };
-                        @endphp
-                        <span class="badge {{ $stageBadge }}">
-                            {{ ucfirst($surveyStage) }} Survey
+                        ?>
+                        <span class="badge <?php echo e($stageBadge); ?>">
+                            <?php echo e(ucfirst($surveyStage)); ?> Survey
                         </span>
-                        @if($isAnonymous)
+                        <?php if($isAnonymous): ?>
                             <span class="badge badge-purple" style="font-size: 0.72rem;">🔒 Anonymous</span>
-                        @endif
-                    @else
-                        <span class="badge {{ $typeBadge }}">{{ ucfirst($survey->type) }}</span>
-                    @endif
-                    <span class="badge badge-gray">{{ $survey->questions_count }} Questions</span>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <span class="badge <?php echo e($typeBadge); ?>"><?php echo e(ucfirst($survey->type)); ?></span>
+                    <?php endif; ?>
+                    <span class="badge badge-gray"><?php echo e($survey->questions_count); ?> Questions</span>
                 </div>
             </div>
 
             <h3 style="font-size:1.1rem; font-weight:700; color:var(--text-primary); margin-bottom:8px; line-height:1.3;">
-                {{ $survey->title }}
+                <?php echo e($survey->title); ?>
+
             </h3>
 
             <p style="font-size:0.875rem; color:var(--text-secondary); line-height:1.6; margin-bottom:0; flex:1;">
-                {{ Str::limit($survey->description ?: 'No detailed description provided.', 110) }}
+                <?php echo e(Str::limit($survey->description ?: 'No detailed description provided.', 110)); ?>
+
             </p>
 
             <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
                 <button type="button"
-                        onclick="openKeyModal('{{ $survey->id }}', '{{ addslashes($survey->title) }}')"
+                        onclick="openKeyModal('<?php echo e($survey->id); ?>', '<?php echo e(addslashes($survey->title)); ?>')"
                         class="btn btn-blue btn-full">
                     🔑 Unlock &amp; Take Survey
                 </button>
             </div>
         </div>
-    @empty
+    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
         <div style="grid-column:1/-1; text-align:center; padding:60px 24px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); color:var(--text-muted);">
             <div style="font-size:3rem; margin-bottom:16px;">📋</div>
             <h3 style="color:var(--text-primary); margin-bottom:8px;">No Active Surveys</h3>
             <p>There are no active public surveys or assessments configured at this time. Please check back later.</p>
         </div>
-    @endforelse
+    <?php endif; ?>
 </div>
 
-{{-- Access Key Modal --}}
+
 <div id="keyModal"
      style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center; padding:16px;">
     <div style="background:var(--surface); border-radius:var(--radius-lg); width:100%; max-width:420px; padding:32px; box-shadow:var(--shadow-lg); animation:keyModalIn 0.22s ease;">
@@ -112,8 +114,8 @@
            style="font-weight:600; color:var(--green-primary); margin-bottom:20px; font-size:0.95rem; padding:10px 14px; background:var(--green-light); border-radius:var(--radius-sm); border:1px solid var(--green-border);">
         </p>
 
-        <form action="{{ route('surveys.verify') }}" method="POST">
-            @csrf
+        <form action="<?php echo e(route('surveys.verify')); ?>" method="POST">
+            <?php echo csrf_field(); ?>
             <input type="hidden" name="assessment_id" id="modalAssessmentId">
 
             <div class="form-group">
@@ -148,9 +150,9 @@
     </div>
 </div>
 
-@endsection
+<?php $__env->stopSection(); ?>
 
-@section('scripts')
+<?php $__env->startSection('scripts'); ?>
 <style>
 @keyframes keyModalIn {
     from { opacity: 0; transform: scale(0.95) translateY(-12px); }
@@ -189,10 +191,12 @@ document.getElementById('access_key_input').addEventListener('input', function()
     this.setSelectionRange(pos, pos);
 });
 
-@if(session('target_assessment_id'))
+<?php if(session('target_assessment_id')): ?>
     document.addEventListener('DOMContentLoaded', function() {
-        openKeyModal('{{ session("target_assessment_id") }}', 'Survey Verification Required');
+        openKeyModal('<?php echo e(session("target_assessment_id")); ?>', 'Survey Verification Required');
     });
-@endif
+<?php endif; ?>
 </script>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\mukuk\Documents\GitHub\pif-ehub\resources\views/survey/gallery.blade.php ENDPATH**/ ?>

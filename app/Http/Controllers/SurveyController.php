@@ -55,6 +55,7 @@ class SurveyController extends Controller
     {
         $surveys = Assessment::where('status', 'active')
             ->whereIn('type', ['survey', 'assessment', 'interview'])
+            ->with(['rule'])
             ->withCount('questions')
             ->orderBy('created_at', 'desc')
             ->get();

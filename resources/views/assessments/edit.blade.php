@@ -67,10 +67,46 @@
         </div>
     </div>
 
-    <!-- Scoring Rules Card -->
-    <div style="background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+    @php
+        $rulesData = $assessment->rule?->rules_json ?? [];
+        $currentStage = $rulesData['survey_stage'] ?? 'baseline';
+        $isAnon = isset($rulesData['is_anonymous']) ? $rulesData['is_anonymous'] : true;
+    @endphp
+
+    <!-- Survey M&E Stage & Anonymity Card (Shown when Type = Survey) -->
+    <div id="survey-config-card" style="display: {{ $assessment->type === 'survey' ? 'block' : 'none' }}; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; margin-bottom: 24px; border-left: 4px solid #7c3aed;">
+        <h3 style="color: #7c3aed; margin-bottom: 16px; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>📋</span> Survey Monitoring &amp; Evaluation (M&amp;E) Settings
+        </h3>
+        <p style="font-size: 0.85rem; color: #555; margin-bottom: 16px;">
+            Surveys are non-graded data collection instruments designed for <strong>Baseline, Midline, and Endline</strong> impact tracking and anonymous student/participant feedback. There are no passing thresholds or fail marks.
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+                <label for="survey_stage" style="font-weight: bold; color: #1a1a1a;">M&amp;E Survey Stage *</label>
+                <select name="survey_stage" id="survey_stage" class="form-control">
+                    <option value="baseline" {{ old('survey_stage', $currentStage) == 'baseline' ? 'selected' : '' }}>📌 Baseline Survey (Pre-Training Assessment)</option>
+                    <option value="midline" {{ old('survey_stage', $currentStage) == 'midline' ? 'selected' : '' }}>📌 Midline Survey (Mid-Point Progress &amp; Feedback)</option>
+                    <option value="endline" {{ old('survey_stage', $currentStage) == 'endline' ? 'selected' : '' }}>📌 Endline Survey (Post-Training Outcomes &amp; Impact)</option>
+                    <option value="general" {{ old('survey_stage', $currentStage) == 'general' ? 'selected' : '' }}>📌 General / Ongoing Feedback Survey</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="is_anonymous" style="font-weight: bold; color: #1a1a1a;">Survey Anonymity Mode *</label>
+                <select name="is_anonymous" id="is_anonymous" class="form-control">
+                    <option value="1" {{ old('is_anonymous', $isAnon ? '1' : '0') == '1' ? 'selected' : '' }}>🔒 Anonymous Survey (Confidential &amp; Unnamed)</option>
+                    <option value="0" {{ old('is_anonymous', $isAnon ? '1' : '0') == '0' ? 'selected' : '' }}>🧑‍🎓 Tracked by Participant Name / ID</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scoring Rules Card (For Interviews and Graded Assessments) -->
+    <div id="scoring-rules-card" style="display: {{ $assessment->type === 'survey' ? 'none' : 'block' }}; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
         <h3 style="color: #59B33F; margin-bottom: 16px; font-size: 1.2rem; border-bottom: 1px solid #eee; padding-bottom: 8px;">
-            2. Scoring Rules & Thresholds
+            2. Scoring Rules &amp; Thresholds
         </h3>
 
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
@@ -390,6 +426,28 @@ document.addEventListener('DOMContentLoaded', function() {
         items.forEach((item, idx) => {
             item.querySelector('h4').textContent = `Question #${idx + 1}`;
         });
+    }
+
+    // Handle Assessment Type Switch (Survey vs Assessment/Interview)
+    const typeSelect = document.getElementById('type');
+    const surveyCard = document.getElementById('survey-config-card');
+    const scoringCard = document.getElementById('scoring-rules-card');
+
+    function syncTypeUI() {
+        if (!typeSelect) return;
+        const val = typeSelect.value;
+        if (val === 'survey') {
+            if (surveyCard) surveyCard.style.display = 'block';
+            if (scoringCard) scoringCard.style.display = 'none';
+        } else {
+            if (surveyCard) surveyCard.style.display = 'none';
+            if (scoringCard) scoringCard.style.display = 'block';
+        }
+    }
+
+    if (typeSelect) {
+        typeSelect.addEventListener('change', syncTypeUI);
+        syncTypeUI();
     }
 
     addQuestionBtn.addEventListener('click', function() {

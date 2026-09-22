@@ -40,19 +40,28 @@
         <div class="hub-header-badges" style="margin-top:10px;">
             <span class="badge <?php echo e($statusBadgeClass); ?>"><?php echo e($assessment->status); ?></span>
             <span class="badge <?php echo e($typeBadgeClass); ?>"><?php echo e($assessment->type); ?></span>
+            <?php if($results['is_survey']): ?>
+                <span class="badge badge-purple">
+                    📌 <?php echo e(ucfirst($results['survey_stage'])); ?> Survey
+                </span>
+                <span class="badge <?php echo e($results['is_anonymous'] ? 'badge-blue' : 'badge-teal'); ?>">
+                    <?php echo e($results['is_anonymous'] ? '🔒 Anonymous Responses' : '🧑‍🎓 Identified Participants'); ?>
+
+                </span>
+            <?php endif; ?>
             <?php if($assessment->access_key): ?>
                 <span class="badge badge-gray" style="font-family:monospace; letter-spacing:1px;">
                     🔑 <?php echo e($assessment->access_key); ?>
 
                 </span>
             <?php endif; ?>
-            <?php if($assessment->rule?->passing_threshold !== null): ?>
+            <?php if(!$results['is_survey'] && $assessment->rule?->passing_threshold !== null): ?>
                 <span class="badge badge-teal">
                     Pass: <?php echo e(number_format($assessment->rule->passing_threshold, 1)); ?>
 
                 </span>
             <?php endif; ?>
-            <?php if($assessment->rule?->score_cap !== null): ?>
+            <?php if(!$results['is_survey'] && $assessment->rule?->score_cap !== null): ?>
                 <span class="badge badge-orange">
                     Cap: <?php echo e(number_format($assessment->rule->score_cap, 1)); ?>
 
@@ -65,10 +74,17 @@
         <button type="button" class="btn btn-sm" style="background:#2563eb; color:white;" onclick="openModal('importResultsModal')">
             📥 Import Results
         </button>
-        <a href="<?php echo e(route('assessments.evaluate', $assessment->id)); ?>"
-           class="btn btn-sm" style="background:#0f766e; color:white;">
-            ✏️ Grade / Evaluate
-        </a>
+        <?php if($results['is_survey']): ?>
+            <a href="<?php echo e(route('surveys.take', $assessment->id)); ?>"
+               class="btn btn-sm" style="background:#7c3aed; color:white;" target="_blank">
+                📋 Take / Open Survey ↗
+            </a>
+        <?php else: ?>
+            <a href="<?php echo e(route('assessments.evaluate', $assessment->id)); ?>"
+               class="btn btn-sm" style="background:#0f766e; color:white;">
+                ✏️ Grade / Evaluate
+            </a>
+        <?php endif; ?>
         <?php if($isSuper): ?>
             <a href="<?php echo e(route('assessments.edit', $assessment->id)); ?>"
                class="btn btn-outline btn-sm">⚙️ Edit</a>
@@ -87,160 +103,303 @@
 <?php endif; ?>
 
 
-<div class="metric-cards" style="margin-bottom:24px;">
-    <div class="metric-card">
-        <div class="value"><?php echo e($results['total_candidates']); ?></div>
-        <div class="label">Candidates</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:#2563eb;"><?php echo e($results['total_panelists']); ?></div>
-        <div class="label">Evaluators</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:#7c3aed;"><?php echo e($results['total_questions']); ?></div>
-        <div class="label">Questions</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:var(--green-primary);">
-            <?php echo e(collect($results['candidate_results'])->where('passed', true)->count()); ?>
-
+<?php if($results['is_survey']): ?>
+    
+    <div class="metric-cards" style="margin-bottom:24px;">
+        <div class="metric-card">
+            <div class="value" style="color:#2563eb;"><?php echo e($results['total_evaluations_submitted']); ?></div>
+            <div class="label">Total Responses</div>
         </div>
-        <div class="label">Passed</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:#dc2626;">
-            <?php echo e(collect($results['candidate_results'])->where('passed', false)->count()); ?>
-
+        <div class="metric-card">
+            <div class="value" style="color:#7c3aed;"><?php echo e(ucfirst($results['survey_stage'])); ?></div>
+            <div class="label">M&amp;E Stage</div>
         </div>
-        <div class="label">Failed</div>
-    </div>
-    <div class="metric-card">
-        <div class="value" style="color:#c2410c;">
-            <?php echo e(collect($results['candidate_results'])->where('passed', null)->count()); ?>
-
+        <div class="metric-card">
+            <div class="value"><?php echo e($results['total_questions']); ?></div>
+            <div class="label">Questions</div>
         </div>
-        <div class="label">Ungraded</div>
+        <div class="metric-card">
+            <div class="value" style="color:var(--green-primary);">
+                <?php echo e($results['overall_survey_average'] > 0 ? number_format($results['overall_survey_average'], 2) : '—'); ?>
+
+            </div>
+            <div class="label">Avg Rating (1-5)</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#0284c7;">
+                <?php echo e(count($results['qualitative_feedback'])); ?>
+
+            </div>
+            <div class="label">Qualitative Topics</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#64748b; font-size:1.1rem;">
+                <?php echo e($results['is_anonymous'] ? 'Anonymous' : 'Identified'); ?>
+
+            </div>
+            <div class="label">Response Mode</div>
+        </div>
     </div>
-</div>
+<?php else: ?>
+    
+    <div class="metric-cards" style="margin-bottom:24px;">
+        <div class="metric-card">
+            <div class="value"><?php echo e($results['total_candidates']); ?></div>
+            <div class="label">Candidates</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#2563eb;"><?php echo e($results['total_panelists']); ?></div>
+            <div class="label">Evaluators</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#7c3aed;"><?php echo e($results['total_questions']); ?></div>
+            <div class="label">Questions</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:var(--green-primary);">
+                <?php echo e(collect($results['candidate_results'])->where('passed', true)->count()); ?>
+
+            </div>
+            <div class="label">Passed</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#dc2626;">
+                <?php echo e(collect($results['candidate_results'])->where('passed', false)->count()); ?>
+
+            </div>
+            <div class="label">Failed</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#c2410c;">
+                <?php echo e(collect($results['candidate_results'])->where('passed', null)->count()); ?>
+
+            </div>
+            <div class="label">Ungraded</div>
+        </div>
+    </div>
+<?php endif; ?>
 
 
 <div class="hub-tabs">
     <a href="<?php echo e(route('assessments.show', [$assessment->id, 'tab' => 'results'])); ?>"
        class="hub-tab <?php echo e($activeTab === 'results' ? 'active' : ''); ?>">
-        🏆 Results & Leaderboard
+        <?php echo e($results['is_survey'] ? '📊 Survey Analysis & Responses' : '🏆 Results & Leaderboard'); ?>
+
     </a>
     <a href="<?php echo e(route('assessments.show', [$assessment->id, 'tab' => 'questions'])); ?>"
        class="hub-tab <?php echo e($activeTab === 'questions' ? 'active' : ''); ?>">
-        ❓ Questions & Criteria
+        ❓ Questions &amp; Criteria
     </a>
     <?php if($isSuper): ?>
-        <a href="<?php echo e(route('assessments.show', [$assessment->id, 'tab' => 'panelists'])); ?>"
-           class="hub-tab <?php echo e($activeTab === 'panelists' ? 'active' : ''); ?>">
-            👥 Panelists
-        </a>
-        <a href="<?php echo e(route('assessments.show', [$assessment->id, 'tab' => 'candidates'])); ?>"
-           class="hub-tab <?php echo e($activeTab === 'candidates' ? 'active' : ''); ?>">
-            🧑‍🎓 Candidates
-        </a>
+        <?php if(!$results['is_survey']): ?>
+            <a href="<?php echo e(route('assessments.show', [$assessment->id, 'tab' => 'panelists'])); ?>"
+               class="hub-tab <?php echo e($activeTab === 'panelists' ? 'active' : ''); ?>">
+                👥 Panelists
+            </a>
+            <a href="<?php echo e(route('assessments.show', [$assessment->id, 'tab' => 'candidates'])); ?>"
+               class="hub-tab <?php echo e($activeTab === 'candidates' ? 'active' : ''); ?>">
+                🧑‍🎓 Candidates
+            </a>
+        <?php endif; ?>
         <a href="<?php echo e(route('assessments.show', [$assessment->id, 'tab' => 'rules'])); ?>"
            class="hub-tab <?php echo e($activeTab === 'rules' ? 'active' : ''); ?>">
-            📐 Rules & Config
+            📐 <?php echo e($results['is_survey'] ? 'Survey Settings' : 'Rules & Config'); ?>
+
         </a>
     <?php endif; ?>
 </div>
 
 
 <?php if($activeTab === 'results'): ?>
-    <div class="card">
-        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-            <div>
-                <span class="card-title">🏆 Candidate Evaluation Leaderboard</span>
-                <div class="info-box info" style="margin:4px 0 0; padding:4px 12px; font-size:0.75rem; border-radius:100px; display:inline-block;">
-                    <strong>Formula:</strong> Avg<sub>panelists</sub>(Σ question_score × weight), capped at limit
+    <?php if($results['is_survey']): ?>
+        
+        <div style="display:grid; gap:20px;">
+            
+            <div class="card">
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <span class="card-title">📈 Question-by-Question M&amp;E Ratings</span>
+                        <div class="info-box info" style="margin:4px 0 0; padding:4px 12px; font-size:0.75rem; border-radius:100px; display:inline-block;">
+                            <strong>M&amp;E Note:</strong> Surveys are for tracking participant baseline, midline, and endline feedback without pass/fail cutoffs.
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <a href="<?php echo e(route('assessments.template', ['assessment' => $assessment->id, 'format' => 'xlsx'])); ?>"
+                           class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                            📥 Template (.xlsx)
+                        </a>
+                        <a href="<?php echo e(route('assessments.template', ['assessment' => $assessment->id, 'format' => 'csv'])); ?>"
+                           class="btn btn-ghost btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                            .csv
+                        </a>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('importResultsModal')" style="display:inline-flex; align-items:center; gap:6px;">
+                            📤 Import Results
+                        </button>
+                    </div>
+                </div>
+
+                <div style="padding:20px; display:grid; gap:16px;">
+                    <?php $__empty_1 = true; $__currentLoopData = $results['survey_question_stats']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $qStat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; gap:12px;">
+                                <div style="font-weight:700; color:var(--text-primary); font-size:0.92rem;">
+                                    <?php echo e($qStat['question_text']); ?>
+
+                                </div>
+                                <?php if($qStat['avg_score'] !== null): ?>
+                                    <div style="font-size:1.1rem; font-weight:800; color:var(--green-dark); flex-shrink:0;">
+                                        <?php echo e(number_format($qStat['avg_score'], 2)); ?> <span style="font-size:0.75rem; color:var(--text-muted);">/ 5.0</span>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="badge badge-gray" style="font-size:0.75rem;">Text Feedback</span>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php if($qStat['type'] === 'scale' && $qStat['response_count'] > 0): ?>
+                                <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-top:10px;">
+                                    <?php for($r = 1; $r <= 5; $r++): ?>
+                                        <?php
+                                            $count = $qStat['distribution'][$r] ?? 0;
+                                            $pct = $qStat['response_count'] > 0 ? round(($count / $qStat['response_count']) * 100) : 0;
+                                        ?>
+                                        <div style="background:#fff; border:1px solid var(--border); border-radius:4px; padding:6px 8px; text-align:center;">
+                                            <div style="font-size:0.72rem; color:var(--text-muted);">Rating <?php echo e($r); ?></div>
+                                            <div style="font-weight:700; font-size:0.9rem; color:var(--text-primary);"><?php echo e($count); ?> <span style="font-size:0.7rem; color:var(--text-muted);">(<?php echo e($pct); ?>%)</span></div>
+                                            <div style="height:4px; background:#e5e7eb; border-radius:2px; margin-top:4px; overflow:hidden;">
+                                                <div style="height:100%; width:<?php echo e($pct); ?>%; background:var(--green-primary);"></div>
+                                            </div>
+                                        </div>
+                                    <?php endfor; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                        <div style="text-align:center; padding:32px; color:var(--text-muted);">
+                            No survey questions configured yet.
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <a href="<?php echo e(route('assessments.template', ['assessment' => $assessment->id, 'format' => 'xlsx'])); ?>"
-                   class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
-                    📥 Template (.xlsx)
-                </a>
-                <a href="<?php echo e(route('assessments.template', ['assessment' => $assessment->id, 'format' => 'csv'])); ?>"
-                   class="btn btn-ghost btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
-                    .csv
-                </a>
-                <button type="button" class="btn btn-primary btn-sm" onclick="openModal('importResultsModal')" style="display:inline-flex; align-items:center; gap:6px;">
-                    📤 Import Results
-                </button>
+
+            
+            <?php if(!empty($results['qualitative_feedback'])): ?>
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">💬 Qualitative Participant Feedback</span>
+                    </div>
+                    <div style="padding:20px; display:grid; gap:16px;">
+                        <?php $__currentLoopData = $results['qualitative_feedback']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $qFeed): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px;">
+                                <div style="font-weight:700; color:var(--text-primary); font-size:0.9rem; margin-bottom:12px;">
+                                    ❓ <?php echo e($qFeed['question_text']); ?>
+
+                                </div>
+                                <div style="display:grid; gap:8px;">
+                                    <?php $__currentLoopData = $qFeed['responses']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $respText): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <div style="background:#fff; border-left:3px solid var(--green-primary); padding:10px 14px; border-radius:4px; font-size:0.85rem; color:var(--text-primary); line-height:1.4;">
+                                            "<?php echo e($respText); ?>"
+                                        </div>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                </div>
+                            </div>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php else: ?>
+        
+        <div class="card">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <span class="card-title">🏆 Candidate Evaluation Leaderboard</span>
+                    <div class="info-box info" style="margin:4px 0 0; padding:4px 12px; font-size:0.75rem; border-radius:100px; display:inline-block;">
+                        <strong>Formula:</strong> Avg<sub>panelists</sub>(Σ question_score × weight), capped at limit
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <a href="<?php echo e(route('assessments.template', ['assessment' => $assessment->id, 'format' => 'xlsx'])); ?>"
+                       class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                        📥 Template (.xlsx)
+                    </a>
+                    <a href="<?php echo e(route('assessments.template', ['assessment' => $assessment->id, 'format' => 'csv'])); ?>"
+                       class="btn btn-ghost btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
+                        .csv
+                    </a>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openModal('importResultsModal')" style="display:inline-flex; align-items:center; gap:6px;">
+                        📤 Import Results
+                    </button>
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">Rank</th>
+                            <th>Candidate</th>
+                            <th>Panel</th>
+                            <th style="text-align:center;">Evaluations</th>
+                            <th style="text-align:right;">Weighted Total</th>
+                            <th style="text-align:right;">Final Score</th>
+                            <th style="text-align:center;">Status</th>
+                            <th style="text-align:right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php $__empty_1 = true; $__currentLoopData = $results['candidate_results']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $idx => $res): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                            <tr class="<?php echo e($res['passed'] === true ? 'accepted' : ''); ?>">
+                                <td style="font-weight:700; color:var(--text-muted);">
+                                    #<?php echo e($idx + 1); ?>
+
+                                </td>
+                                <td>
+                                    <strong><?php echo e($res['candidate']->name); ?></strong>
+                                </td>
+                                <td>
+                                    <span class="badge badge-gray">Panel <?php echo e($res['candidate']->panel); ?></span>
+                                </td>
+                                <td style="text-align:center;">
+                                    <span style="font-weight:600;"><?php echo e($res['evaluator_count']); ?></span>
+                                </td>
+                                <td style="text-align:right; font-weight:600; color:var(--text-secondary);">
+                                    <?php echo e(number_format($res['weighted_total'], 2)); ?>
+
+                                </td>
+                                <td style="text-align:right; font-weight:800; font-size:1.1rem; color:var(--green-primary);">
+                                    <?php echo e(number_format($res['final_score'], 2)); ?>
+
+                                </td>
+                                <td style="text-align:center;">
+                                    <?php if($res['passed'] === true): ?>
+                                        <span class="badge badge-green">PASSED</span>
+                                    <?php elseif($res['passed'] === false): ?>
+                                        <span class="badge badge-red">FAILED</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-gray">UNGRADED</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="text-align:right;">
+                                    <a href="<?php echo e(route('assessments.evaluate', [$assessment->id, 'candidate_id' => $res['candidate']->id])); ?>"
+                                       class="btn btn-primary btn-sm">Grade</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                            <tr>
+                                <td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">
+                                    No candidates assigned or evaluated yet.
+                                    <?php if($isSuper): ?>
+                                        <a href="javascript:void(0)" onclick="openModal('addCandidatesModal')" style="color:var(--green-primary); font-weight:600;">+ Add candidates now</a>
+                                        or
+                                        <a href="javascript:void(0)" onclick="openModal('importResultsModal')" style="color:#2563eb; font-weight:600;">📥 Import Results from Excel</a>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
-        <div style="overflow-x:auto;">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th style="width:50px;">Rank</th>
-                        <th>Candidate</th>
-                        <th>Panel</th>
-                        <th style="text-align:center;">Evaluations</th>
-                        <th style="text-align:right;">Weighted Total</th>
-                        <th style="text-align:right;">Final Score</th>
-                        <th style="text-align:center;">Status</th>
-                        <th style="text-align:right;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php $__empty_1 = true; $__currentLoopData = $results['candidate_results']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $idx => $res): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                        <tr class="<?php echo e($res['passed'] === true ? 'accepted' : ''); ?>">
-                            <td style="font-weight:700; color:var(--text-muted);">
-                                #<?php echo e($idx + 1); ?>
-
-                            </td>
-                            <td>
-                                <strong><?php echo e($res['candidate']->name); ?></strong>
-                            </td>
-                            <td>
-                                <span class="badge badge-gray">Panel <?php echo e($res['candidate']->panel); ?></span>
-                            </td>
-                            <td style="text-align:center;">
-                                <span style="font-weight:600;"><?php echo e($res['evaluator_count']); ?></span>
-                            </td>
-                            <td style="text-align:right; font-weight:600; color:var(--text-secondary);">
-                                <?php echo e(number_format($res['weighted_total'], 2)); ?>
-
-                            </td>
-                            <td style="text-align:right; font-weight:800; font-size:1.1rem; color:var(--green-primary);">
-                                <?php echo e(number_format($res['final_score'], 2)); ?>
-
-                            </td>
-                            <td style="text-align:center;">
-                                <?php if($res['passed'] === true): ?>
-                                    <span class="badge badge-green">PASSED</span>
-                                <?php elseif($res['passed'] === false): ?>
-                                    <span class="badge badge-red">FAILED</span>
-                                <?php else: ?>
-                                    <span class="badge badge-gray">UNGRADED</span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="text-align:right;">
-                                <a href="<?php echo e(route('assessments.evaluate', [$assessment->id, 'candidate_id' => $res['candidate']->id])); ?>"
-                                   class="btn btn-primary btn-sm">Grade</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                        <tr>
-                            <td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">
-                                No candidates assigned or evaluated yet.
-                                <?php if($isSuper): ?>
-                                    <a href="javascript:void(0)" onclick="openModal('addCandidatesModal')" style="color:var(--green-primary); font-weight:600;">+ Add candidates now</a>
-                                    or
-                                    <a href="javascript:void(0)" onclick="openModal('importResultsModal')" style="color:#2563eb; font-weight:600;">📥 Import Results from Excel</a>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <?php endif; ?>
 <?php endif; ?>
 
 
@@ -466,47 +625,69 @@
         
         <div class="card">
             <div class="card-header">
-                <span class="card-title">📐 Scoring Rules</span>
+                <span class="card-title"><?php echo e($results['is_survey'] ? '📋 M&E Survey Configuration' : '📐 Scoring Rules'); ?></span>
                 <a href="<?php echo e(route('assessments.edit', $assessment->id)); ?>" class="btn btn-outline btn-sm">Edit</a>
             </div>
             <div class="card-body">
                 <?php if($assessment->rule): ?>
                     <table style="width:100%; font-size:0.9rem; border-collapse:collapse;">
-                        <tr style="border-bottom:1px solid var(--border);">
-                            <td style="padding:10px 0; color:var(--text-secondary);">Max Panelists</td>
-                            <td style="padding:10px 0; font-weight:600; text-align:right;">
-                                <?php echo e($assessment->rule->max_panelists ?? 'Unlimited'); ?>
-
-                            </td>
-                        </tr>
-                        <tr style="border-bottom:1px solid var(--border);">
-                            <td style="padding:10px 0; color:var(--text-secondary);">Score Cap</td>
-                            <td style="padding:10px 0; font-weight:600; text-align:right;">
-                                <?php echo e($assessment->rule->score_cap !== null ? number_format($assessment->rule->score_cap, 2) : 'None'); ?>
-
-                            </td>
-                        </tr>
-                        <tr style="border-bottom:1px solid var(--border);">
-                            <td style="padding:10px 0; color:var(--text-secondary);">Passing Threshold</td>
-                            <td style="padding:10px 0; font-weight:600; text-align:right;">
-                                <?php echo e($assessment->rule->passing_threshold !== null ? number_format($assessment->rule->passing_threshold, 2) : 'N/A'); ?>
-
-                            </td>
-                        </tr>
-                        <?php if(!empty($assessment->rule->rules_json['number_of_panels'])): ?>
-                            <tr>
-                                <td style="padding:10px 0; color:var(--text-secondary);">Number of Panels</td>
+                        <?php if($results['is_survey']): ?>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">M&amp;E Survey Stage</td>
+                                <td style="padding:10px 0; font-weight:700; text-align:right;">
+                                    <span class="badge badge-purple"><?php echo e(ucfirst($results['survey_stage'])); ?> Survey</span>
+                                </td>
+                            </tr>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Response Mode</td>
                                 <td style="padding:10px 0; font-weight:600; text-align:right;">
-                                    <?php echo e($assessment->rule->rules_json['number_of_panels']); ?>
+                                    <?php echo e($results['is_anonymous'] ? '🔒 Anonymous (No names recorded)' : '🧑‍🎓 Identified Responses'); ?>
 
                                 </td>
                             </tr>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Pass / Fail Scoring</td>
+                                <td style="padding:10px 0; font-weight:600; text-align:right; color:var(--text-muted);">
+                                    Disabled (M&amp;E Analytics Only)
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Max Panelists</td>
+                                <td style="padding:10px 0; font-weight:600; text-align:right;">
+                                    <?php echo e($assessment->rule->max_panelists ?? 'Unlimited'); ?>
+
+                                </td>
+                            </tr>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Score Cap</td>
+                                <td style="padding:10px 0; font-weight:600; text-align:right;">
+                                    <?php echo e($assessment->rule->score_cap !== null ? number_format($assessment->rule->score_cap, 2) : 'None'); ?>
+
+                                </td>
+                            </tr>
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 0; color:var(--text-secondary);">Passing Threshold</td>
+                                <td style="padding:10px 0; font-weight:600; text-align:right;">
+                                    <?php echo e($assessment->rule->passing_threshold !== null ? number_format($assessment->rule->passing_threshold, 2) : 'N/A'); ?>
+
+                                </td>
+                            </tr>
+                            <?php if(!empty($assessment->rule->rules_json['number_of_panels'])): ?>
+                                <tr>
+                                    <td style="padding:10px 0; color:var(--text-secondary);">Number of Panels</td>
+                                    <td style="padding:10px 0; font-weight:600; text-align:right;">
+                                        <?php echo e($assessment->rule->rules_json['number_of_panels']); ?>
+
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </table>
 
                     <?php if(!empty($assessment->rule->rules_json) && count($assessment->rule->rules_json) > 0): ?>
                         <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
-                            <div style="font-size:0.78rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Extra Rules JSON</div>
+                            <div style="font-size:0.78rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Rules &amp; Parameters JSON</div>
                             <pre style="background:var(--surface-alt); padding:12px; border-radius:var(--radius-sm); font-size:0.78rem; overflow-x:auto; border:1px solid var(--border);"><?php echo e(json_encode($assessment->rule->rules_json, JSON_PRETTY_PRINT)); ?></pre>
                         </div>
                     <?php endif; ?>

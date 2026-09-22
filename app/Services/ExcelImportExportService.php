@@ -744,7 +744,17 @@ class ExcelImportExportService
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle(substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $assessment->title), 0, 30) ?: 'Template');
 
-        $headers = ['Evaluator Name / Email', 'Candidate Name', 'Panel'];
+        $rules = $assessment->rules ? (is_array($assessment->rules->rules_json) ? $assessment->rules->rules_json : json_decode($assessment->rules->rules_json, true)) : [];
+        $isSurvey = $assessment->type === 'survey';
+        $surveyStage = ucfirst($rules['survey_stage'] ?? 'Baseline');
+        $isAnonymous = !empty($rules['is_anonymous']);
+
+        if ($isSurvey) {
+            $headers = [$isAnonymous ? 'Respondent Code / Identifier' : 'Respondent Name / Student ID', 'Survey Stage (Baseline/Midline/Endline)'];
+        } else {
+            $headers = ['Evaluator Name / Email', 'Candidate Name', 'Panel'];
+        }
+
         foreach ($assessment->questions as $idx => $q) {
             $num = $idx + 1;
             $typeHint = match($q->type) {
@@ -759,7 +769,37 @@ class ExcelImportExportService
         $sampleData = [];
         $sampleEvaluator = $assessment->panelists->first()?->name ?: 'Mutale Kabamba';
 
-        if ($assessment->candidates->isNotEmpty()) {
+        if ($isSurvey) {
+            if ($isAnonymous) {
+                $sampleRespondents = [
+                    ['RESP-001', "{$surveyStage} Survey"],
+                    ['RESP-002', "{$surveyStage} Survey"],
+                    ['RESP-003', "{$surveyStage} Survey"],
+                ];
+            } else {
+                $sampleRespondents = [
+                    ['Diana Mungala', "{$surveyStage} Survey"],
+                    ['Emma Banda', "{$surveyStage} Survey"],
+                    ['Kabwe Tembo', "{$surveyStage} Survey"],
+                ];
+            }
+
+            foreach ($sampleRespondents as $resp) {
+                $row = [$resp[0], $resp[1]];
+                foreach ($assessment->questions as $q) {
+                    if ($q->type === 'scale') {
+                        $row[] = 4;
+                    } elseif ($q->type === 'boolean') {
+                        $row[] = 'Yes';
+                    } elseif ($q->type === 'multiple_choice' && $q->options->isNotEmpty()) {
+                        $row[] = $q->options->first()->option_label;
+                    } else {
+                        $row[] = 'Constructive qualitative feedback on training modules.';
+                    }
+                }
+                $sampleData[] = $row;
+            }
+        } elseif ($assessment->candidates->isNotEmpty()) {
             foreach ($assessment->candidates->take(5) as $cand) {
                 $row = [$sampleEvaluator, $cand->name, 'Panel ' . ($cand->panel ?: 'A')];
                 foreach ($assessment->questions as $q) {
@@ -870,7 +910,7 @@ class ExcelImportExportService
         try {
             foreach ($rows as $index => $row) {
                 $rawType = strtolower($row['surveytype'] ?? $row['type'] ?? 'baseline');
-                $surveyType = in_array($rawType, ['baseline', 'endline']) ? $rawType : 'baseline';
+                $surveyType = in_array($rawType, ['baseline', 'midline', 'endline']) ? $rawType : 'baseline';
 
                 $data = [
                     'survey_type' => $surveyType,
@@ -996,7 +1036,7 @@ class ExcelImportExportService
             case 'survey-responses':
                 $filename = 'PIF_Survey_Responses_Import_Template';
                 $headers = [
-                    'Survey Type (baseline/endline)',
+                    'Survey Type (baseline/midline/endline)',
                     'Q1 File Management (1-5)',
                     'Q2 Spreadsheets (1-5)',
                     'Q3 UX Design (1-5)',
@@ -1015,6 +1055,7 @@ class ExcelImportExportService
                 ];
                 $sampleData = [
                     ['baseline', 3, 3, 2, 2, 1, 1, 4, 3, 2, 4, 3, 'To gain practical tech skills and launch a career.', 'Fullstack web development and freelance client pitching.', 'Being able to build web apps and earn income.', 'Electricity load-shedding and transport costs.'],
+                    ['midline', 4, 4, 3, 3, 3, 2, 4, 4, 3, 4, 4, 'Mid-cohort progress update.', 'Responsive layouts and JavaScript DOM manipulation.', 'Building independent portfolio components.', 'Balancing study schedule with family.'],
                     ['endline', 5, 4, 4, 4, 4, 4, 5, 5, 4, 5, 5, 'Graduated from Livingstone Cohort.', 'Mastered HTML/CSS/JS and database design.', 'Secured first freelance project in tourism sector.', 'Managed challenges through group peer work.'],
                 ];
                 break;
