@@ -21,6 +21,9 @@ class AssessmentAssignment extends Model
         'candidate_id',
         'role',
         'panel_name',
+        'round',
+        'selection_status',
+        'selection_notes',
     ];
 
     /**

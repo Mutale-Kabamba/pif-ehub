@@ -3,13 +3,22 @@
 @section('title', 'Edit Assessment - ' . $assessment->title)
 
 @section('content')
-<div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:10px;">
     <div>
-        <h1>Edit Assessment</h1>
+        <h1>Edit {{ ucfirst($assessment->type) }}</h1>
         <h4>Modify assessment configuration, questions, scoring rules, and assigned users</h4>
     </div>
-    <div>
-        <a href="{{ route('assessments.show', $assessment->id) }}" class="btn" style="background: #e0e0e0; color: #333;">
+    <div style="display:flex; gap:8px; align-items:center;">
+        <form action="{{ route('assessments.destroy', $assessment->id) }}" method="POST" id="delete-assessment-form"
+              onsubmit="return confirm('Permanently delete this {{ $assessment->type }} and all related evaluation scores, responses, and records?');"
+              style="display:inline; margin:0;">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger btn-sm" style="padding: 8px 14px;">
+                🗑️ Delete {{ ucfirst($assessment->type) }}
+            </button>
+        </form>
+        <a href="{{ route('assessments.show', $assessment->id) }}" class="btn btn-sm" style="background: #e0e0e0; color: #333;">
             &larr; Back to Details
         </a>
     </div>
@@ -222,7 +231,7 @@
 
     <div style="text-align: right; margin-bottom: 40px;">
         <button type="submit" class="btn btn-primary" style="padding: 12px 28px; font-size: 1rem;">
-            Update Assessment & Rules
+            Update {{ ucfirst($assessment->type) }} &amp; Rules
         </button>
     </div>
 </form>

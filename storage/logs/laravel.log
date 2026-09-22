@@ -695,3 +695,7 @@ Did you mean one of these?
 #1 C:/Users/mukuk/Documents/GitHub/pif-ehub/scratch/test_import_and_candidates.php(117): Illuminate/Foundation/Bootstrap/HandleExceptions->{closure:Illuminate/Foundation/Bootstrap/HandleExceptions::forwardsTo():257}(2, 'Undefined array...', 'C://Users//mukuk//...', 117)
 #2 {main}
 "} 
+[2026-09-22 14:23:50] production.ERROR: Class "App\Models\ScoringRule" not found {"exception":"[object] (Error(code: 0): Class \"App\\Models\\ScoringRule\" not found at C:/Users/mukuk/Documents/GitHub/pif-ehub/test_rounds_and_deletion.php:31)
+[stacktrace]
+#0 {main}
+"} 

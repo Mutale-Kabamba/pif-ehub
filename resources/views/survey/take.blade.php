@@ -19,22 +19,16 @@
 <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
     <div>
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span class="badge {{ $stageInfo['badge'] }}" style="font-size: 0.85rem; padding: 4px 10px;">
-                {{ $stageInfo['icon'] }} {{ $stageInfo['name'] }}
+            <span class="badge badge-purple" style="font-size: 0.85rem; padding: 4px 10px;">
+                🔒 Strictly Anonymous Survey
             </span>
-            @if($isAnonymous)
-                <span class="badge badge-purple" style="font-size: 0.85rem; padding: 4px 10px;">
-                    🔒 Anonymous Response
-                </span>
-            @else
-                <span class="badge badge-teal" style="font-size: 0.85rem; padding: 4px 10px;">
-                    🧑‍🎓 Identified Response
-                </span>
-            @endif
+            <span class="badge badge-teal" style="font-size: 0.85rem; padding: 4px 10px;">
+                📋 M&amp;E Feedback Instrument
+            </span>
         </div>
         <h1 style="margin: 0 0 6px 0;">{{ $assessment->title }}</h1>
         <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">
-            {{ $assessment->description ?: $stageInfo['desc'] }}
+            {{ $assessment->description ?: 'Please provide your honest feedback across the questions below.' }}
         </p>
     </div>
     <div>
@@ -47,8 +41,8 @@
 <div style="background: var(--surface); border: 1px solid var(--border); border-left: 4px solid #8b5cf6; border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; gap: 14px;">
     <div style="font-size: 1.5rem;">ℹ️</div>
     <div style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5;">
-        <strong style="color: var(--text-primary);">Monitoring &amp; Evaluation Instrument:</strong>
-        This survey is designed to track longitudinal program outcomes. It is not an exam, has no pass/fail grading, and your candid answers help improve training quality and impact measurement.
+        <strong style="color: var(--text-primary);">Anonymous Monitoring &amp; Evaluation:</strong>
+        Surveys are not tests and have no pass or fail grades. No names or student IDs are collected. Please select whether you are submitting your <strong>Baseline</strong>, <strong>Midline</strong>, or <strong>Endline</strong> response.
     </div>
 </div>
 
@@ -72,22 +66,41 @@
 <form action="{{ route('surveys.submit', $assessment->id) }}" method="POST">
     @csrf
 
-    @if(!$isAnonymous)
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; margin-bottom: 24px;">
-            <div class="form-group" style="margin: 0;">
-                <label for="respondent_name" style="font-weight: 600;">Your Name / Student ID (Optional)</label>
-                <input type="text" name="respondent_name" id="respondent_name" class="form-control" placeholder="Enter your full name or student ID...">
-                <small style="color: var(--text-muted); display: block; margin-top: 4px;">Leave blank if you prefer not to attach your name.</small>
-            </div>
+    {{-- M&E Survey Phase Selection (Baseline, Midline, Endline) --}}
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 22px; margin-bottom: 24px;">
+        <label style="font-weight: 700; color: var(--text-primary); display: block; margin-bottom: 10px; font-size: 0.98rem;">
+            Select Survey Phase / Stage <span style="color: #dc2626;">*</span>
+        </label>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0; margin-bottom: 14px;">
+            Choose the evaluation milestone corresponding to your current cohort training phase:
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+            <label class="survey-stage-card" style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 2px solid {{ $surveyStage === 'baseline' || !$surveyStage ? 'var(--green-primary)' : 'var(--border)' }}; border-radius: 8px; background: {{ $surveyStage === 'baseline' || !$surveyStage ? 'var(--green-light)' : 'var(--surface-alt)' }}; cursor: pointer; transition: all 0.15s;">
+                <input type="radio" name="survey_stage" value="baseline" {{ $surveyStage === 'baseline' || !$surveyStage ? 'checked' : '' }} required style="accent-color: #59B33F; width: 18px; height: 18px; margin-top: 2px;">
+                <div>
+                    <strong style="display: block; font-size: 0.95rem; color: var(--text-primary);">🌱 Baseline Survey</strong>
+                    <span style="font-size: 0.78rem; color: var(--text-secondary); display: block; margin-top: 2px;">Start of Training (Day 1 / Entry)</span>
+                </div>
+            </label>
+
+            <label class="survey-stage-card" style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 2px solid {{ $surveyStage === 'midline' ? 'var(--green-primary)' : 'var(--border)' }}; border-radius: 8px; background: {{ $surveyStage === 'midline' ? 'var(--green-light)' : 'var(--surface-alt)' }}; cursor: pointer; transition: all 0.15s;">
+                <input type="radio" name="survey_stage" value="midline" {{ $surveyStage === 'midline' ? 'checked' : '' }} required style="accent-color: #59B33F; width: 18px; height: 18px; margin-top: 2px;">
+                <div>
+                    <strong style="display: block; font-size: 0.95rem; color: var(--text-primary);">⚖️ Midline Survey</strong>
+                    <span style="font-size: 0.78rem; color: var(--text-secondary); display: block; margin-top: 2px;">Mid-Cohort Checkpoint (Day 78)</span>
+                </div>
+            </label>
+
+            <label class="survey-stage-card" style="display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 2px solid {{ $surveyStage === 'endline' ? 'var(--green-primary)' : 'var(--border)' }}; border-radius: 8px; background: {{ $surveyStage === 'endline' ? 'var(--green-light)' : 'var(--surface-alt)' }}; cursor: pointer; transition: all 0.15s;">
+                <input type="radio" name="survey_stage" value="endline" {{ $surveyStage === 'endline' ? 'checked' : '' }} required style="accent-color: #59B33F; width: 18px; height: 18px; margin-top: 2px;">
+                <div>
+                    <strong style="display: block; font-size: 0.95rem; color: var(--text-primary);">🎓 Endline Survey</strong>
+                    <span style="font-size: 0.78rem; color: var(--text-secondary); display: block; margin-top: 2px;">Program Completion / Exit (Day 156)</span>
+                </div>
+            </label>
         </div>
-    @else
-        <div style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 1.2rem;">🔒</span>
-            <span style="font-size: 0.85rem; color: #5b21b6; font-weight: 500;">
-                <strong>Anonymous Mode Active:</strong> Your individual identity will not be collected or linked to your responses.
-            </span>
-        </div>
-    @endif
+    </div>
 
     <div style="margin-bottom: 30px;">
         @forelse($assessment->questions as $idx => $question)
@@ -165,4 +178,24 @@
         @endif
     </div>
 </form>
+@endsection
+
+@section('scripts')
+<script>
+document.querySelectorAll('input[name="survey_stage"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.querySelectorAll('.survey-stage-card').forEach(card => {
+            card.style.borderColor = 'var(--border)';
+            card.style.background = 'var(--surface-alt)';
+        });
+        if (this.checked) {
+            const parent = this.closest('.survey-stage-card');
+            if (parent) {
+                parent.style.borderColor = 'var(--green-primary)';
+                parent.style.background = 'var(--green-light)';
+            }
+        }
+    });
+});
+</script>
 @endsection

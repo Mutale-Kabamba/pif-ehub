@@ -69,7 +69,7 @@ class Assessment extends Model
     {
         return $this->belongsToMany(Candidate::class, 'assessment_assignments', 'assessment_id', 'candidate_id')
             ->wherePivot('role', 'candidate')
-            ->withPivot('role')
+            ->withPivot(['role', 'panel_name', 'round', 'selection_status', 'selection_notes'])
             ->withTimestamps();
     }
 

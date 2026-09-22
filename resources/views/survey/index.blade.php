@@ -33,11 +33,12 @@
     @csrf
 
     <div class="form-group">
-        <label for="survey_type">Survey Type</label>
-        <select name="survey_type" id="survey_type" class="form-control" required>
-            <option value="">-- Select Survey Timing --</option>
-            <option value="baseline">Baseline (Day 1)</option>
-            <option value="endline">Endline (Day 156)</option>
+        <label for="survey_type" style="font-weight: 700;">Select Survey Phase / Stage <span style="color: #dc2626;">*</span></label>
+        <select name="survey_type" id="survey_type" class="form-control" required style="font-weight: 600;">
+            <option value="">-- Select Survey Phase (Baseline, Midline, or Endline) --</option>
+            <option value="baseline">🌱 Baseline Survey (Day 1 / Start of Training)</option>
+            <option value="midline">⚖️ Midline Survey (Day 78 / Mid-Cohort Checkpoint)</option>
+            <option value="endline">🎓 Endline Survey (Day 156 / Program Completion &amp; Exit)</option>
         </select>
     </div>
 

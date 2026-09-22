@@ -68,6 +68,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('admin/assessments/{assessment}/template', [AssessmentController::class, 'downloadTemplate'])->name('assessments.template');
     Route::post('admin/assessments/{assessment}/import-results', [AssessmentController::class, 'importResults'])->name('assessments.import-results');
     Route::post('admin/assessments/{assessment}/candidates', [AssessmentController::class, 'addCandidates'])->name('assessments.candidates.add');
+    Route::post('admin/assessments/{assessment}/candidates/{candidate}/status', [AssessmentController::class, 'updateCandidateStatus'])->name('assessments.candidates.status');
     Route::delete('admin/assessments/{assessment}/candidates/{candidate}', [AssessmentController::class, 'removeCandidate'])->name('assessments.candidates.remove');
     Route::get('admin/assessments/{assessment}/evaluate', [AssessmentController::class, 'evaluateForm'])->name('assessments.evaluate');
     Route::post('admin/assessments/{assessment}/evaluate', [AssessmentController::class, 'submitEvaluation'])->name('assessments.submit-evaluation');

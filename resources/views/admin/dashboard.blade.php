@@ -211,6 +211,15 @@
                         <a href="{{ route('assessments.edit', $item->id) }}" class="btn btn-ghost btn-sm" style="padding:6px 8px; font-size:0.8rem;" title="Edit assessment">
                             ⚙️
                         </a>
+                        <form action="{{ route('assessments.destroy', $item->id) }}" method="POST"
+                              onsubmit="return confirm('Permanently delete this {{ $item->type }} (\'{{ addslashes($item->title) }}\')? All evaluation scores will be deleted.');"
+                              style="display:inline; margin:0;">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-ghost btn-sm" style="padding:6px 8px; font-size:0.8rem; color:#dc2626;" title="Delete {{ $item->type }}">
+                                🗑️
+                            </button>
+                        </form>
                     @endif
                 </div>
             </div>

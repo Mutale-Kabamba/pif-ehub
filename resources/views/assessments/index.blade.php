@@ -148,13 +148,18 @@
                        class="btn btn-primary btn-sm">View Hub</a>
                     <a href="{{ route('assessments.show', [$item->id, 'tab' => 'results']) }}"
                        class="btn btn-outline btn-sm" style="color:#2563eb; border-color:#93c5fd;">📥 Import</a>
-                    <a href="{{ route('assessments.evaluate', $item->id) }}"
-                       class="btn btn-sm" style="background:#0f766e; color:white;">Grade</a>
+                    @if($item->type === 'survey')
+                        <a href="{{ route('surveys.take', $item->id) }}"
+                           class="btn btn-sm" style="background:#7c3aed; color:white;" target="_blank">📋 Take</a>
+                    @else
+                        <a href="{{ route('assessments.evaluate', $item->id) }}"
+                           class="btn btn-sm" style="background:#0f766e; color:white;">✏️ Grade</a>
+                    @endif
                     @if($currentUser && $currentUser->isSuper())
                         <a href="{{ route('assessments.edit', $item->id) }}"
                            class="btn btn-outline btn-sm">Edit</a>
                         <form action="{{ route('assessments.destroy', $item->id) }}" method="POST"
-                              onsubmit="return confirm('Delete this assessment? This cannot be undone.');">
+                              onsubmit="return confirm('Permanently delete this {{ $item->type }} (\'{{ addslashes($item->title) }}\')? All evaluation records will be removed.');">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                         </form>

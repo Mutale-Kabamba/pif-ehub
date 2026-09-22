@@ -488,7 +488,7 @@ class AssessmentController extends Controller
     }
 
     /**
-     * Remove the specified assessment from storage.
+     * Remove the specified assessment, interview, or survey from storage.
      */
     public function destroy(Assessment $assessment): RedirectResponse
     {
@@ -497,10 +497,27 @@ class AssessmentController extends Controller
             abort(403, 'Only administrators can delete assessments.');
         }
 
-        $assessment->delete();
+        $typeLabel = ucfirst($assessment->type);
+        $title = $assessment->title;
+
+        DB::transaction(function () use ($assessment) {
+            // Delete evaluation scores
+            EvaluationScore::where('assessment_id', $assessment->id)->delete();
+            // Delete assignments
+            AssessmentAssignment::where('assessment_id', $assessment->id)->delete();
+            // Delete questions and options
+            foreach ($assessment->questions as $question) {
+                $question->options()->delete();
+                $question->delete();
+            }
+            // Delete rules
+            $assessment->rule()?->delete();
+            // Delete assessment
+            $assessment->delete();
+        });
 
         return redirect()->route('assessments.index')
-            ->with('success', 'Assessment deleted successfully.');
+            ->with('success', "{$typeLabel} \"{$title}\" has been deleted successfully.");
     }
 
     /**
@@ -652,14 +669,16 @@ class AssessmentController extends Controller
             'candidate_ids' => 'nullable|array',
             'candidate_ids.*' => 'exists:candidates,id',
             'panel_name' => 'nullable|string|max:50',
+            'round' => 'nullable|integer|min:1',
             'new_candidate_name' => 'nullable|string|max:255',
             'new_candidate_gender' => 'nullable|in:Male,Female',
             'new_candidate_panel' => 'nullable|string|max:50',
         ]);
 
         $addedCount = 0;
+        $targetRound = (int) ($validated['round'] ?? 1);
 
-        DB::transaction(function () use ($assessment, $validated, &$addedCount) {
+        DB::transaction(function () use ($assessment, $validated, $targetRound, &$addedCount) {
             // 1. Assign selected existing candidates
             if (!empty($validated['candidate_ids'])) {
                 foreach ($validated['candidate_ids'] as $candidateId) {
@@ -674,6 +693,8 @@ class AssessmentController extends Controller
                             'candidate_id' => $candidateId,
                             'role' => 'candidate',
                             'panel_name' => $validated['panel_name'] ?: ($cand?->panel ?: 'A'),
+                            'round' => $targetRound,
+                            'selection_status' => 'pending',
                         ]);
                         $addedCount++;
                     }
@@ -693,13 +714,65 @@ class AssessmentController extends Controller
                     'candidate_id' => $newCand->id,
                     'role' => 'candidate',
                     'panel_name' => $validated['new_candidate_panel'] ?? 'A',
+                    'round' => $targetRound,
+                    'selection_status' => 'pending',
                 ]);
                 $addedCount++;
             }
         });
 
+        $roundLabel = $targetRound > 1 ? " for Round {$targetRound}" : "";
+
         return redirect()->route('assessments.show', [$assessment->id, 'tab' => 'candidates'])
-            ->with('success', "{$addedCount} candidate(s) successfully assigned to this assessment.");
+            ->with('success', "{$addedCount} candidate(s) successfully assigned to this assessment{$roundLabel}.");
+    }
+
+    /**
+     * Update candidate selection status, round, and notes.
+     */
+    public function updateCandidateStatus(Request $request, Assessment $assessment, Candidate $candidate): RedirectResponse
+    {
+        $currentUser = auth()->user() ?: User::find(session('admin_user_id'));
+        if ($currentUser && ! $currentUser->isSuper()) {
+            abort(403, 'Only administrators can update candidate selection status.');
+        }
+
+        $validated = $request->validate([
+            'selection_status' => 'required|in:pending,selected,reserve,pulled_out,rejected',
+            'round' => 'nullable|integer|min:1',
+            'selection_notes' => 'nullable|string|max:1000',
+        ]);
+
+        $assignment = AssessmentAssignment::where('assessment_id', $assessment->id)
+            ->where('candidate_id', $candidate->id)
+            ->firstOrFail();
+
+        $updateData = [
+            'selection_status' => $validated['selection_status'],
+        ];
+
+        if (isset($validated['round'])) {
+            $updateData['round'] = (int) $validated['round'];
+        }
+
+        if (array_key_exists('selection_notes', $validated)) {
+            $updateData['selection_notes'] = $validated['selection_notes'];
+        }
+
+        $assignment->update($updateData);
+
+        $statusLabels = [
+            'selected' => 'Selected / Accepted',
+            'reserve' => 'Moved to Reserve / Waitlist',
+            'pulled_out' => 'Marked as Pulled Out (Replacement Needed)',
+            'rejected' => 'Marked as Not Selected',
+            'pending' => 'Reset to Pending Review',
+        ];
+
+        $statusMsg = $statusLabels[$validated['selection_status']] ?? $validated['selection_status'];
+
+        return redirect()->back()
+            ->with('success', "Candidate '{$candidate->name}' status updated to: {$statusMsg}.");
     }
 
     /**

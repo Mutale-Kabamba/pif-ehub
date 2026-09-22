@@ -128,12 +128,14 @@ class SurveyController extends Controller
     public function submit(Request $request, Assessment $assessment): RedirectResponse
     {
         $validated = $request->validate([
-            'respondent_name' => 'nullable|string|max:255',
+            'survey_stage' => 'required|in:baseline,midline,endline',
             'scores' => 'required|array',
             'scores.*.question_id' => 'required|exists:questions,id',
             'scores.*.score' => 'nullable|numeric',
             'scores.*.text_response' => 'nullable|string',
         ]);
+
+        $stageName = ucfirst($validated['survey_stage']);
 
         DB::transaction(function () use ($validated, $assessment) {
             foreach ($validated['scores'] as $qScore) {
@@ -148,11 +150,11 @@ class SurveyController extends Controller
         });
 
         return redirect()->route('surveys.index')
-            ->with('success', 'Thank you! Your survey responses for "' . $assessment->title . '" have been submitted successfully.');
+            ->with('success', "Thank you! Your {$stageName} survey response for \"{$assessment->title}\" has been submitted anonymously.");
     }
 
     /**
-     * Store a newly submitted legacy baseline/endline survey response.
+     * Store a newly submitted baseline, midline, or endline survey response.
      */
     public function store(Request $request): RedirectResponse
     {
@@ -167,12 +169,14 @@ class SurveyController extends Controller
         }
 
         $validated = $request->validate(array_merge($quantRules, $qualRules, [
-            'survey_type' => 'required|in:baseline,endline',
+            'survey_type' => 'required|in:baseline,midline,endline',
         ]));
 
         SurveyResponse::create($validated);
 
+        $stageName = ucfirst($validated['survey_type']);
+
         return redirect()->back()
-            ->with('success', 'Thank you! Your survey response has been submitted successfully.');
+            ->with('success', "Thank you! Your {$stageName} survey response has been submitted anonymously.");
     }
 }

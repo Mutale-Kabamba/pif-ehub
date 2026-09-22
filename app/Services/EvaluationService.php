@@ -121,6 +121,10 @@ class EvaluationService
 
         return [
             'candidate' => $candidate,
+            'round' => (int) ($candidate->pivot->round ?? 1),
+            'selection_status' => $candidate->pivot->selection_status ?? 'pending',
+            'selection_notes' => $candidate->pivot->selection_notes ?? null,
+            'panel_name' => $candidate->pivot->panel_name ?? $candidate->panel ?? 'A',
             'evaluator_count' => $evaluatorCount,
             'weighted_total' => round($averageWeightedScore, 2),
             'final_score' => round($finalCappedScore, 2),
@@ -214,6 +218,16 @@ class EvaluationService
 
         $distinctSurveyRespondents = $allScores->pluck('candidate_id')->filter()->unique()->count() ?: $totalEvaluations;
 
+        // Selection overview metrics across rounds
+        $selectedCount = count(array_filter($candidateResults, fn($r) => ($r['selection_status'] ?? '') === 'selected'));
+        $reserveCount = count(array_filter($candidateResults, fn($r) => ($r['selection_status'] ?? '') === 'reserve'));
+        $pulledOutCount = count(array_filter($candidateResults, fn($r) => ($r['selection_status'] ?? '') === 'pulled_out'));
+        $roundsList = array_values(array_unique(array_map(fn($r) => (int)($r['round'] ?? 1), $candidateResults)));
+        sort($roundsList);
+        if (empty($roundsList)) {
+            $roundsList = [1];
+        }
+
         return [
             'assessment' => $assessment,
             'is_survey' => $isSurvey,
@@ -228,6 +242,10 @@ class EvaluationService
             'qualitative_feedback' => $qualitativeFeedback,
             'passed_count' => $passedCount,
             'failed_count' => $failedCount,
+            'selected_count' => $selectedCount,
+            'reserve_count' => $reserveCount,
+            'pulled_out_count' => $pulledOutCount,
+            'rounds_list' => $roundsList,
             'candidate_results' => $candidateResults,
         ];
     }

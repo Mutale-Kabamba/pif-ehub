@@ -66,7 +66,7 @@
         </div>
     </div>
 
-    <div class="hub-header-actions">
+    <div class="hub-header-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <button type="button" class="btn btn-sm" style="background:#2563eb; color:white;" onclick="openModal('importResultsModal')">
             📥 Import Results
         </button>
@@ -84,6 +84,15 @@
         @if($isSuper)
             <a href="{{ route('assessments.edit', $assessment->id) }}"
                class="btn btn-outline btn-sm">⚙️ Edit</a>
+            <form action="{{ route('assessments.destroy', $assessment->id) }}" method="POST"
+                  onsubmit="return confirm('Are you sure you want to PERMANENTLY DELETE this {{ $assessment->type }} and all associated evaluation scores and candidate assignments?');"
+                  style="display:inline; margin:0;">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-danger btn-sm" style="padding:6px 10px;" title="Delete this {{ $assessment->type }}">
+                    🗑️ Delete
+                </button>
+            </form>
         @endif
         <a href="{{ route('assessments.index') }}"
            class="btn btn-ghost btn-sm">← Back</a>
@@ -134,37 +143,31 @@
         </div>
     </div>
 @else
-    {{-- Graded Assessment Metric Cards --}}
+    {{-- Graded Assessment & Multi-Round Selection Metric Cards --}}
     <div class="metric-cards" style="margin-bottom:24px;">
         <div class="metric-card">
             <div class="value">{{ $results['total_candidates'] }}</div>
-            <div class="label">Candidates</div>
+            <div class="label">Total Candidates</div>
         </div>
         <div class="metric-card">
-            <div class="value" style="color:#2563eb;">{{ $results['total_panelists'] }}</div>
+            <div class="value" style="color:var(--green-primary);">{{ $results['selected_count'] }}</div>
+            <div class="label">Selected / Confirmed</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#d97706;">{{ $results['reserve_count'] }}</div>
+            <div class="label">Reserve Pool</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#dc2626;">{{ $results['pulled_out_count'] }}</div>
+            <div class="label">Pulled Out (Need Sub)</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#2563eb;">{{ $results['passed_count'] }}</div>
+            <div class="label">Passed Benchmark</div>
+        </div>
+        <div class="metric-card">
+            <div class="value" style="color:#7c3aed;">{{ $results['total_panelists'] }}</div>
             <div class="label">Evaluators</div>
-        </div>
-        <div class="metric-card">
-            <div class="value" style="color:#7c3aed;">{{ $results['total_questions'] }}</div>
-            <div class="label">Questions</div>
-        </div>
-        <div class="metric-card">
-            <div class="value" style="color:var(--green-primary);">
-                {{ collect($results['candidate_results'])->where('passed', true)->count() }}
-            </div>
-            <div class="label">Passed</div>
-        </div>
-        <div class="metric-card">
-            <div class="value" style="color:#dc2626;">
-                {{ collect($results['candidate_results'])->where('passed', false)->count() }}
-            </div>
-            <div class="label">Failed</div>
-        </div>
-        <div class="metric-card">
-            <div class="value" style="color:#c2410c;">
-                {{ collect($results['candidate_results'])->where('passed', null)->count() }}
-            </div>
-            <div class="label">Ungraded</div>
         </div>
     </div>
 @endif
@@ -173,7 +176,7 @@
 <div class="hub-tabs">
     <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'results']) }}"
        class="hub-tab {{ $activeTab === 'results' ? 'active' : '' }}">
-        {{ $results['is_survey'] ? '📊 Survey Analysis & Responses' : '🏆 Results & Leaderboard' }}
+        {{ $results['is_survey'] ? '📊 Survey Analysis & Responses' : '🏆 Results & Selection Leaderboard' }}
     </a>
     <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'questions']) }}"
        class="hub-tab {{ $activeTab === 'questions' ? 'active' : '' }}">
@@ -187,7 +190,7 @@
             </a>
             <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'candidates']) }}"
                class="hub-tab {{ $activeTab === 'candidates' ? 'active' : '' }}">
-                🧑‍🎓 Candidates
+                🧑‍🎓 Candidates &amp; Rounds ({{ $assessment->candidates->count() }})
             </a>
         @endif
         <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'rules']) }}"
@@ -299,14 +302,14 @@
         </div>
     @else
         {{-- ======================================================
-             GRADED CANDIDATE EVALUATION LEADERBOARD VIEW
+             GRADED CANDIDATE EVALUATION & SELECTION LEADERBOARD
         ====================================================== --}}
         <div class="card">
             <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                 <div>
-                    <span class="card-title">🏆 Candidate Evaluation Leaderboard</span>
+                    <span class="card-title">🏆 Candidate Selection Leaderboard</span>
                     <div class="info-box info" style="margin:4px 0 0; padding:4px 12px; font-size:0.75rem; border-radius:100px; display:inline-block;">
-                        <strong>Formula:</strong> Avg<sub>panelists</sub>(Σ question_score × weight), capped at limit
+                        <strong>Selection &amp; Replacement:</strong> Mark candidates as Selected, Reserve Pool, or Pulled Out to manage multi-round cohort admissions.
                     </div>
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -323,39 +326,103 @@
                     </button>
                 </div>
             </div>
+
+            {{-- Multi-Round Filter Tabs --}}
+            <div style="padding:12px 20px; background:var(--surface-alt); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <span style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); margin-right:4px;">Round Filter:</span>
+                    <button type="button" class="round-filter-btn active" onclick="filterByRound('all', this)"
+                            style="padding:4px 10px; font-size:0.78rem; border-radius:100px; border:1px solid var(--border); background:var(--green-primary); color:white; font-weight:600; cursor:pointer;">
+                        All Rounds ({{ count($results['candidate_results']) }})
+                    </button>
+                    @foreach($results['rounds_list'] as $rNum)
+                        @php
+                            $rCount = count(array_filter($results['candidate_results'], fn($item) => (int)($item['round'] ?? 1) === $rNum));
+                            $rLabel = match($rNum) {
+                                1 => 'Round 1 (Initial)',
+                                2 => 'Round 2 (Replacement)',
+                                3 => 'Round 3 (Reserve / Extension)',
+                                default => "Round {$rNum}",
+                            };
+                        @endphp
+                        <button type="button" class="round-filter-btn" onclick="filterByRound({{ $rNum }}, this)"
+                                style="padding:4px 10px; font-size:0.78rem; border-radius:100px; border:1px solid var(--border); background:#fff; color:var(--text-primary); font-weight:600; cursor:pointer;">
+                            {{ $rLabel }} ({{ $rCount }})
+                        </button>
+                    @endforeach
+                </div>
+
+                @if($isSuper)
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn btn-sm btn-outline" onclick="openModal('addCandidatesModal')">
+                            + Add Round 2 / Replacement Candidates
+                        </button>
+                    </div>
+                @endif
+            </div>
+
             <div style="overflow-x:auto;">
-                <table class="data-table">
+                <table class="data-table" id="leaderboardTable">
                     <thead>
                         <tr>
-                            <th style="width:50px;">Rank</th>
+                            <th style="width:40px;">Rank</th>
                             <th>Candidate</th>
+                            <th style="text-align:center;">Round</th>
                             <th>Panel</th>
                             <th style="text-align:center;">Evaluations</th>
-                            <th style="text-align:right;">Weighted Total</th>
                             <th style="text-align:right;">Final Score</th>
-                            <th style="text-align:center;">Status</th>
+                            <th style="text-align:center;">Benchmark</th>
+                            <th style="text-align:center;">Selection Status</th>
                             <th style="text-align:right;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($results['candidate_results'] as $idx => $res)
-                            <tr class="{{ $res['passed'] === true ? 'accepted' : '' }}">
+                            @php
+                                $cRound = (int) ($res['round'] ?? 1);
+                                $cStatus = $res['selection_status'] ?? 'pending';
+
+                                $statusBadge = match($cStatus) {
+                                    'selected'   => ['class' => 'badge-green', 'icon' => '🟢', 'label' => 'Selected'],
+                                    'reserve'    => ['class' => 'badge-orange', 'icon' => '🟡', 'label' => 'Reserve Pool'],
+                                    'pulled_out' => ['class' => 'badge-red', 'icon' => '🔴', 'label' => 'Pulled Out'],
+                                    'rejected'   => ['class' => 'badge-red', 'icon' => '✕', 'label' => 'Not Selected'],
+                                    default      => ['class' => 'badge-gray', 'icon' => '⚪', 'label' => 'Pending'],
+                                };
+
+                                $rowHighlight = match($cStatus) {
+                                    'selected' => 'background:rgba(16, 185, 129, 0.04);',
+                                    'pulled_out' => 'background:rgba(239, 68, 68, 0.04); opacity:0.85;',
+                                    default => '',
+                                };
+                            @endphp
+                            <tr class="cand-row {{ $res['passed'] === true ? 'accepted' : '' }}" data-round="{{ $cRound }}" style="{{ $rowHighlight }}">
                                 <td style="font-weight:700; color:var(--text-muted);">
                                     #{{ $idx + 1 }}
                                 </td>
                                 <td>
                                     <strong>{{ $res['candidate']->name }}</strong>
+                                    @if($res['candidate']->gender)
+                                        <span style="font-size:0.75rem; color:var(--text-muted); margin-left:4px;">({{ $res['candidate']->gender }})</span>
+                                    @endif
+                                    @if($res['selection_notes'])
+                                        <div style="font-size:0.75rem; color:#6b7280; margin-top:2px; font-style:italic;">
+                                            📝 Note: {{ $res['selection_notes'] }}
+                                        </div>
+                                    @endif
+                                </td>
+                                <td style="text-align:center;">
+                                    <span class="badge {{ $cRound > 1 ? 'badge-purple' : 'badge-gray' }}" style="font-size:0.75rem;">
+                                        R{{ $cRound }}
+                                    </span>
                                 </td>
                                 <td>
-                                    <span class="badge badge-gray">Panel {{ $res['candidate']->panel }}</span>
+                                    <span class="badge badge-gray">Panel {{ $res['panel_name'] ?: 'A' }}</span>
                                 </td>
                                 <td style="text-align:center;">
                                     <span style="font-weight:600;">{{ $res['evaluator_count'] }}</span>
                                 </td>
-                                <td style="text-align:right; font-weight:600; color:var(--text-secondary);">
-                                    {{ number_format($res['weighted_total'], 2) }}
-                                </td>
-                                <td style="text-align:right; font-weight:800; font-size:1.1rem; color:var(--green-primary);">
+                                <td style="text-align:right; font-weight:800; font-size:1.05rem; color:var(--green-primary);">
                                     {{ number_format($res['final_score'], 2) }}
                                 </td>
                                 <td style="text-align:center;">
@@ -367,19 +434,36 @@
                                         <span class="badge badge-gray">UNGRADED</span>
                                     @endif
                                 </td>
+                                <td style="text-align:center;">
+                                    <span class="badge {{ $statusBadge['class'] }}" style="display:inline-flex; align-items:center; gap:4px; font-size:0.78rem;">
+                                        {{ $statusBadge['icon'] }} {{ $statusBadge['label'] }}
+                                    </span>
+                                </td>
                                 <td style="text-align:right;">
-                                    <a href="{{ route('assessments.evaluate', [$assessment->id, 'candidate_id' => $res['candidate']->id]) }}"
-                                       class="btn btn-primary btn-sm">Grade</a>
+                                    <div style="display:inline-flex; gap:4px; align-items:center;">
+                                        <a href="{{ route('assessments.evaluate', [$assessment->id, 'candidate_id' => $res['candidate']->id]) }}"
+                                           class="btn btn-primary btn-sm" style="padding:3px 8px; font-size:0.78rem;">
+                                            Grade
+                                        </a>
+                                        @if($isSuper)
+                                            <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:0.78rem;"
+                                                    onclick="openStatusModal({{ $res['candidate']->id }}, '{{ addslashes($res['candidate']->name) }}', {{ $cRound }}, '{{ $cStatus }}', '{{ addslashes($res['selection_notes'] ?? '') }}')">
+                                                Status ▾
+                                            </button>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" style="text-align:center; padding:40px; color:var(--text-muted);">
+                                <td colspan="9" style="text-align:center; padding:40px; color:var(--text-muted);">
                                     No candidates assigned or evaluated yet.
                                     @if($isSuper)
-                                        <a href="javascript:void(0)" onclick="openModal('addCandidatesModal')" style="color:var(--green-primary); font-weight:600;">+ Add candidates now</a>
-                                        or
-                                        <a href="javascript:void(0)" onclick="openModal('importResultsModal')" style="color:#2563eb; font-weight:600;">📥 Import Results from Excel</a>
+                                        <div style="margin-top:8px;">
+                                            <a href="javascript:void(0)" onclick="openModal('addCandidatesModal')" style="color:var(--green-primary); font-weight:600;">+ Add candidates now</a>
+                                            or
+                                            <a href="javascript:void(0)" onclick="openModal('importResultsModal')" style="color:#2563eb; font-weight:600;">📥 Import Results from Excel</a>
+                                        </div>
                                     @endif
                                 </td>
                             </tr>
@@ -508,20 +592,20 @@
 @endif
 
 {{-- ======================================================
-     TAB: CANDIDATES (Super Admin only)
+     TAB: CANDIDATES & MULTI-ROUND SELECTION (Super Admin only)
 ====================================================== --}}
 @if($activeTab === 'candidates' && $isSuper)
     <div class="card">
         <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
             <div>
-                <span class="card-title">🧑‍🎓 Assigned Candidates ({{ $assessment->candidates->count() }})</span>
+                <span class="card-title">🧑‍🎓 Candidates &amp; Selection Rounds ({{ $assessment->candidates->count() }})</span>
                 <p style="margin:2px 0 0; color:var(--text-secondary); font-size:0.82rem;">
-                    Manage candidates assigned to this assessment, add new candidates, or remove existing participants.
+                    Manage candidate rosters across rounds (e.g. Round 1 initial, Round 2 replacement pool) and track selection lifecycle.
                 </p>
             </div>
             <div style="display:flex; gap:8px;">
                 <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addCandidatesModal')">
-                    + Add Candidates
+                    + Add Candidates / Replacement Round
                 </button>
                 <a href="{{ route('assessments.edit', $assessment->id) }}" class="btn btn-outline btn-sm">
                     ⚙️ Configure Roster
@@ -533,6 +617,8 @@
                 <thead>
                     <tr>
                         <th>Candidate Name</th>
+                        <th style="text-align:center;">Round</th>
+                        <th style="text-align:center;">Selection Status</th>
                         <th>Gender Track</th>
                         <th>Assigned Panel</th>
                         <th style="text-align:center;">Evaluated</th>
@@ -547,13 +633,40 @@
                                 ->where('role', 'candidate')
                                 ->first();
 
+                            $cRound = (int) ($candAssignment?->round ?? 1);
+                            $cStatus = $candAssignment?->selection_status ?? 'pending';
+                            $cNotes = $candAssignment?->selection_notes ?? '';
+
                             $hasScores = \App\Models\EvaluationScore::where('assessment_id', $assessment->id)
                                 ->where('candidate_id', $c->id)
                                 ->exists();
+
+                            $statusBadge = match($cStatus) {
+                                'selected'   => ['class' => 'badge-green', 'icon' => '🟢', 'label' => 'Selected'],
+                                'reserve'    => ['class' => 'badge-orange', 'icon' => '🟡', 'label' => 'Reserve Pool'],
+                                'pulled_out' => ['class' => 'badge-red', 'icon' => '🔴', 'label' => 'Pulled Out'],
+                                'rejected'   => ['class' => 'badge-red', 'icon' => '✕', 'label' => 'Not Selected'],
+                                default      => ['class' => 'badge-gray', 'icon' => '⚪', 'label' => 'Pending'],
+                            };
                         @endphp
                         <tr>
                             <td>
                                 <strong>{{ $c->name }}</strong>
+                                @if($cNotes)
+                                    <div style="font-size:0.75rem; color:#6b7280; margin-top:2px; font-style:italic;">
+                                        📝 {{ $cNotes }}
+                                    </div>
+                                @endif
+                            </td>
+                            <td style="text-align:center;">
+                                <span class="badge {{ $cRound > 1 ? 'badge-purple' : 'badge-gray' }}" style="font-size:0.75rem;">
+                                    Round {{ $cRound }}
+                                </span>
+                            </td>
+                            <td style="text-align:center;">
+                                <span class="badge {{ $statusBadge['class'] }}" style="font-size:0.75rem;">
+                                    {{ $statusBadge['icon'] }} {{ $statusBadge['label'] }}
+                                </span>
                             </td>
                             <td>
                                 <span class="badge {{ $c->gender === 'Female' ? 'badge-purple' : 'badge-blue' }}">
@@ -574,8 +687,12 @@
                             </td>
                             <td style="text-align:right;">
                                 <div style="display:inline-flex; gap:6px; align-items:center;">
+                                    <button type="button" class="btn btn-outline btn-sm" style="padding:4px 8px; font-size:0.78rem;"
+                                            onclick="openStatusModal({{ $c->id }}, '{{ addslashes($c->name) }}', {{ $cRound }}, '{{ $cStatus }}', '{{ addslashes($cNotes) }}')">
+                                        Status
+                                    </button>
                                     <a href="{{ route('assessments.evaluate', [$assessment->id, 'candidate_id' => $c->id]) }}"
-                                       class="btn btn-primary btn-sm" style="padding:4px 10px; font-size:0.8rem;">
+                                       class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:0.78rem;">
                                         Grade
                                     </a>
                                     <form action="{{ route('assessments.candidates.remove', ['assessment' => $assessment->id, 'candidate' => $c->id]) }}" method="POST"
@@ -592,7 +709,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" style="text-align:center; padding:36px; color:var(--text-muted);">
+                            <td colspan="7" style="text-align:center; padding:36px; color:var(--text-muted);">
                                 No candidates assigned to this assessment yet.
                                 <div style="margin-top:10px;">
                                     <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addCandidatesModal')">
@@ -788,14 +905,14 @@
 </div>
 
 {{-- ======================================================
-     MODAL 2: ADD CANDIDATES TO ASSESSMENT
+     MODAL 2: ADD CANDIDATES / REPLACEMENT ROUND
 ====================================================== --}}
 <div id="addCandidatesModal" class="pif-modal" style="display:none;">
     <div class="pif-modal-backdrop" onclick="closeModal('addCandidatesModal')"></div>
-    <div class="pif-modal-card" style="max-width:560px;">
+    <div class="pif-modal-card" style="max-width:580px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:10px;">
             <h3 style="margin:0; font-size:1.2rem; display:flex; align-items:center; gap:8px;">
-                🧑‍🎓 Add Candidates to Assessment
+                🧑‍🎓 Add Candidates &amp; Selection Rounds
             </h3>
             <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('addCandidatesModal')">✕</button>
         </div>
@@ -807,10 +924,35 @@
         <form action="{{ route('assessments.candidates.add', $assessment->id) }}" method="POST">
             @csrf
 
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; background:var(--surface-alt); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+                <div>
+                    <label for="modal_target_round" style="font-weight:700; font-size:0.82rem; color:var(--text-primary); display:block; margin-bottom:4px;">
+                        🎯 Selection Round:
+                    </label>
+                    <select name="round" id="modal_target_round" class="form-control" style="font-size:0.82rem; height:36px;">
+                        <option value="1">Round 1 (Initial / Main)</option>
+                        <option value="2">Round 2 (Replacement Pool)</option>
+                        <option value="3">Round 3 (Reserve / Standby)</option>
+                        <option value="4">Round 4 (Special Cohort)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="assign_panel_name" style="font-weight:700; font-size:0.82rem; color:var(--text-primary); display:block; margin-bottom:4px;">
+                        👥 Assigned Panel:
+                    </label>
+                    <select name="panel_name" id="assign_panel_name" class="form-control" style="font-size:0.82rem; height:36px;">
+                        <option value="">Default Candidate Panel</option>
+                        <option value="A">Panel A</option>
+                        <option value="B">Panel B</option>
+                        <option value="cover">Cover / Observer</option>
+                    </select>
+                </div>
+            </div>
+
             <div style="margin-bottom:16px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                     <label style="font-weight:700; font-size:0.85rem; color:var(--text-primary); margin:0;">
-                        1. Select From Existing Candidates:
+                        1. Select From Existing Roster:
                     </label>
                     <div style="display:flex; gap:6px;">
                         <button type="button" onclick="selectAllModalCandidates(true)" class="btn btn-ghost btn-sm" style="font-size:0.75rem; padding:2px 6px;">Select All</button>
@@ -818,10 +960,10 @@
                     </div>
                 </div>
 
-                <input type="text" id="modalCandidateSearch" onkeyup="filterModalCandidates()" placeholder="Search candidates..."
+                <input type="text" id="modalCandidateSearch" onkeyup="filterModalCandidates()" placeholder="Search candidate name..."
                        style="width:100%; padding:6px 10px; font-size:0.82rem; border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:8px;">
 
-                <div id="modalCandidatesList" style="max-height:180px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; background:var(--surface-alt);">
+                <div id="modalCandidatesList" style="max-height:160px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 12px; background:var(--surface-alt);">
                     @foreach($allCandidates as $cand)
                         @php
                             $isAlreadyAssigned = in_array($cand->id, $assignedCandIds);
@@ -832,21 +974,11 @@
                                 <span class="cand-name-text">{{ $cand->name }}</span>
                             </div>
                             <span class="badge badge-gray" style="font-size:0.72rem;">
-                                {{ $isAlreadyAssigned ? 'Already Assigned' : 'Panel ' . ($cand->panel ?: 'A') }}
+                                {{ $isAlreadyAssigned ? 'Assigned' : 'Panel ' . ($cand->panel ?: 'A') }}
                             </span>
                         </label>
                     @endforeach
                 </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom:16px;">
-                <label for="assign_panel_name" style="font-weight:700; font-size:0.85rem;">Assign Panel to Selected Candidates</label>
-                <select name="panel_name" id="assign_panel_name" class="form-control" style="font-size:0.85rem;">
-                    <option value="">Keep Candidate's Default Panel</option>
-                    <option value="A">Panel A</option>
-                    <option value="B">Panel B</option>
-                    <option value="cover">Cover / Observer</option>
-                </select>
             </div>
 
             <div style="border-top:1px dashed #ddd; padding-top:12px; margin-bottom:16px;">
@@ -869,6 +1001,63 @@
             <div style="display:flex; justify-content:flex-end; gap:8px;">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('addCandidatesModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save &amp; Assign Candidates</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ======================================================
+     MODAL 3: UPDATE CANDIDATE SELECTION STATUS & ROUND
+====================================================== --}}
+<div id="updateStatusModal" class="pif-modal" style="display:none;">
+    <div class="pif-modal-backdrop" onclick="closeModal('updateStatusModal')"></div>
+    <div class="pif-modal-card" style="max-width:480px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <h3 style="margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+                🎯 Update Candidate Status
+            </h3>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('updateStatusModal')">✕</button>
+        </div>
+
+        <form id="updateStatusForm" method="POST" action="">
+            @csrf
+            <div style="margin-bottom:12px;">
+                <div style="font-size:0.82rem; color:var(--text-secondary);">Candidate:</div>
+                <div id="statusModalCandName" style="font-weight:700; font-size:1rem; color:var(--text-primary); margin-top:2px;"></div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px;">
+                <label for="statusSelect" style="font-weight:700; font-size:0.85rem;">Selection Status:</label>
+                <select name="selection_status" id="statusSelect" class="form-control" style="font-size:0.88rem;" required>
+                    <option value="pending">⚪ Pending Review (Under Evaluation)</option>
+                    <option value="selected">🟢 Selected / Confirmed (Finalist Cohort)</option>
+                    <option value="reserve">🟡 Reserve / Standby Pool (Next in Line)</option>
+                    <option value="pulled_out">🔴 Pulled Out / Declined (Passed &amp; Withdrew)</option>
+                    <option value="rejected">✕ Not Selected / Failed Benchmarks</option>
+                </select>
+                <small style="color:var(--text-muted); display:block; margin-top:4px;">
+                    When a candidate is marked "Pulled Out", their score is preserved and replacement candidates can be promoted from the Reserve Pool or added in Round 2.
+                </small>
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px;">
+                <label for="statusRoundInput" style="font-weight:700; font-size:0.85rem;">Assigned Round:</label>
+                <select name="round" id="statusRoundInput" class="form-control" style="font-size:0.88rem;">
+                    <option value="1">Round 1 (Initial / Main)</option>
+                    <option value="2">Round 2 (Replacement Round)</option>
+                    <option value="3">Round 3 (Reserve / Additional)</option>
+                    <option value="4">Round 4</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom:16px;">
+                <label for="statusNotesInput" style="font-weight:700; font-size:0.85rem;">Selection / Replacement Rationale Notes:</label>
+                <textarea name="selection_notes" id="statusNotesInput" class="form-control" rows="3" placeholder="e.g. Candidate accepted another job offer; replaced by candidate from reserve pool." style="font-size:0.85rem;"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('updateStatusModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Status Changes</button>
             </div>
         </form>
     </div>
@@ -904,6 +1093,11 @@
     from { opacity: 0; transform: translateY(12px) scale(0.98); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 }
+.round-filter-btn.active {
+    background: var(--green-primary) !important;
+    color: white !important;
+    border-color: var(--green-primary) !important;
+}
 </style>
 
 <script>
@@ -929,6 +1123,42 @@ function filterModalCandidates() {
         const text = item.querySelector('.cand-name-text')?.textContent?.toLowerCase() || '';
         item.style.display = text.includes(query) ? 'flex' : 'none';
     });
+}
+
+function filterByRound(round, btn) {
+    document.querySelectorAll('.round-filter-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.background = '#fff';
+        b.style.color = 'var(--text-primary)';
+        b.style.borderColor = 'var(--border)';
+    });
+
+    btn.classList.add('active');
+    btn.style.background = 'var(--green-primary)';
+    btn.style.color = '#fff';
+    btn.style.borderColor = 'var(--green-primary)';
+
+    const rows = document.querySelectorAll('#leaderboardTable .cand-row');
+    rows.forEach(row => {
+        if (round === 'all') {
+            row.style.display = '';
+        } else {
+            const rowRound = parseInt(row.getAttribute('data-round') || '1', 10);
+            row.style.display = (rowRound === parseInt(round, 10)) ? '' : 'none';
+        }
+    });
+}
+
+function openStatusModal(candidateId, candidateName, round, currentStatus, notes) {
+    document.getElementById('statusModalCandName').textContent = candidateName;
+    document.getElementById('statusSelect').value = currentStatus || 'pending';
+    document.getElementById('statusRoundInput').value = round || 1;
+    document.getElementById('statusNotesInput').value = notes || '';
+
+    const form = document.getElementById('updateStatusForm');
+    form.action = "{{ url('admin/assessments/' . $assessment->id . '/candidates') }}/" + candidateId + "/status";
+
+    openModal('updateStatusModal');
 }
 </script>
 
