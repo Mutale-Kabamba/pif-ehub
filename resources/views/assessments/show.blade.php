@@ -129,12 +129,16 @@
             </div>
             <div class="label">Avg Rating (1-5)</div>
         </div>
-        <div class="metric-card">
-            <div class="value" style="color:#0284c7;">
-                {{ count($results['qualitative_feedback']) }}
+        @if(!empty($results['stage_counts']))
+            <div class="metric-card">
+                <div class="value" style="font-size:1.05rem; display:flex; gap:6px; justify-content:center; align-items:center;">
+                    <span style="color:#059669; font-weight:700;" title="Baseline">🌱 {{ $results['stage_counts']['baseline'] ?? 0 }}</span>
+                    <span style="color:#7c3aed; font-weight:700;" title="Midline">⚖️ {{ $results['stage_counts']['midline'] ?? 0 }}</span>
+                    <span style="color:#0284c7; font-weight:700;" title="Endline">🎓 {{ $results['stage_counts']['endline'] ?? 0 }}</span>
+                </div>
+                <div class="label">Base / Mid / End</div>
             </div>
-            <div class="label">Qualitative Topics</div>
-        </div>
+        @endif
         <div class="metric-card">
             <div class="value" style="color:#64748b; font-size:1.1rem;">
                 {{ $results['is_anonymous'] ? 'Anonymous' : 'Identified' }}
@@ -148,54 +152,54 @@
         <div class="metric-card">
             <div class="value">{{ $results['total_candidates'] }}</div>
             <div class="label">Total Candidates</div>
+            @if($results['rounds_list'] && count($results['rounds_list']) > 1)
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                    Across {{ count($results['rounds_list']) }} Selection Rounds
+                </div>
+            @endif
         </div>
         <div class="metric-card">
             <div class="value" style="color:var(--green-primary);">{{ $results['selected_count'] }}</div>
-            <div class="label">Selected / Confirmed</div>
+            <div class="label">🟢 Selected for Cohort</div>
         </div>
         <div class="metric-card">
-            <div class="value" style="color:#d97706;">{{ $results['reserve_count'] }}</div>
-            <div class="label">Reserve Pool</div>
+            <div class="value" style="color:#f59e0b;">{{ $results['reserve_count'] }}</div>
+            <div class="label">🟡 Reserve Pool</div>
         </div>
         <div class="metric-card">
-            <div class="value" style="color:#dc2626;">{{ $results['pulled_out_count'] }}</div>
-            <div class="label">Pulled Out (Need Sub)</div>
+            <div class="value" style="color:#ef4444;">{{ $results['pulled_out_count'] }}</div>
+            <div class="label">⚪ Pulled Out / Declined</div>
         </div>
         <div class="metric-card">
-            <div class="value" style="color:#2563eb;">{{ $results['passed_count'] }}</div>
-            <div class="label">Passed Benchmark</div>
+            <div class="value" style="color:var(--teal-primary);">{{ $results['total_panelists'] }}</div>
+            <div class="label">Panelists</div>
         </div>
         <div class="metric-card">
-            <div class="value" style="color:#7c3aed;">{{ $results['total_panelists'] }}</div>
-            <div class="label">Evaluators</div>
+            <div class="value" style="color:#64748b;">{{ $results['total_evaluations_submitted'] }}</div>
+            <div class="label">Scores Logged</div>
         </div>
     </div>
 @endif
 
-{{-- ========== PER-ASSESSMENT HUB TABS ========== --}}
+{{-- ======================================================
+     TAB NAVIGATION
+====================================================== --}}
 <div class="hub-tabs">
-    <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'results']) }}"
-       class="hub-tab {{ $activeTab === 'results' ? 'active' : '' }}">
-        {{ $results['is_survey'] ? '📊 Survey Analysis & Responses' : '🏆 Results & Selection Leaderboard' }}
+    <a href="?tab=results" class="hub-tab {{ $activeTab === 'results' ? 'active' : '' }}">
+        {{ $results['is_survey'] ? '📊 Survey Analysis & Insights' : '🏆 Selection Leaderboard' }}
     </a>
-    <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'questions']) }}"
-       class="hub-tab {{ $activeTab === 'questions' ? 'active' : '' }}">
-        ❓ Questions &amp; Criteria
+    <a href="?tab=candidates" class="hub-tab {{ $activeTab === 'candidates' ? 'active' : '' }}">
+        {{ $results['is_survey'] ? '👥 Respondents & Participation' : '👥 Candidates & Rounds (' . $results['total_candidates'] . ')' }}
+    </a>
+    <a href="?tab=panelists" class="hub-tab {{ $activeTab === 'panelists' ? 'active' : '' }}">
+        👨‍🏫 Panelists ({{ $results['total_panelists'] }})
+    </a>
+    <a href="?tab=questions" class="hub-tab {{ $activeTab === 'questions' ? 'active' : '' }}">
+        📋 Rubric &amp; Questions ({{ $results['total_questions'] }})
     </a>
     @if($isSuper)
-        @if(!$results['is_survey'])
-            <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'panelists']) }}"
-               class="hub-tab {{ $activeTab === 'panelists' ? 'active' : '' }}">
-                👥 Panelists
-            </a>
-            <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'candidates']) }}"
-               class="hub-tab {{ $activeTab === 'candidates' ? 'active' : '' }}">
-                🧑‍🎓 Candidates &amp; Rounds ({{ $assessment->candidates->count() }})
-            </a>
-        @endif
-        <a href="{{ route('assessments.show', [$assessment->id, 'tab' => 'rules']) }}"
-           class="hub-tab {{ $activeTab === 'rules' ? 'active' : '' }}">
-            📐 {{ $results['is_survey'] ? 'Survey Settings' : 'Rules & Config' }}
+        <a href="?tab=settings" class="hub-tab {{ $activeTab === 'settings' ? 'active' : '' }}">
+            ⚙️ Configuration
         </a>
     @endif
 </div>
@@ -209,19 +213,19 @@
              SURVEY SPECIFIC ANALYSIS VIEW (NO PASS/FAIL)
         ====================================================== --}}
         <div style="display:grid; gap:20px;">
-            {{-- Question-by-Question Rating Analysis --}}
+            {{-- Survey Bar Chart Overview --}}
             <div class="card">
                 <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                     <div>
-                        <span class="card-title">📈 Question-by-Question M&amp;E Ratings</span>
-                        <div class="info-box info" style="margin:4px 0 0; padding:4px 12px; font-size:0.75rem; border-radius:100px; display:inline-block;">
-                            <strong>M&amp;E Note:</strong> Surveys are for tracking participant baseline, midline, and endline feedback without pass/fail cutoffs.
+                        <span class="card-title">📊 Survey Competency Rating Bar Chart</span>
+                        <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px;">
+                            Hover over any bar to view the full question text · <strong>{{ ucfirst($results['survey_stage']) }} (/5.00)</strong>
                         </div>
                     </div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                         <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'xlsx']) }}"
                            class="btn btn-outline btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
-                            📥 Template (.xlsx)
+                            📥 Export (.xlsx)
                         </a>
                         <a href="{{ route('assessments.template', ['assessment' => $assessment->id, 'format' => 'csv']) }}"
                            class="btn btn-ghost btn-sm" style="display:inline-flex; align-items:center; gap:4px;">
@@ -233,64 +237,100 @@
                     </div>
                 </div>
 
-                <div style="padding:20px; display:grid; gap:16px;">
-                    @forelse($results['survey_question_stats'] as $qStat)
-                        <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px;">
-                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; gap:12px;">
-                                <div style="font-weight:700; color:var(--text-primary); font-size:0.92rem;">
-                                    {{ $qStat['question_text'] }}
-                                </div>
-                                @if($qStat['avg_score'] !== null)
-                                    <div style="font-size:1.1rem; font-weight:800; color:var(--green-dark); flex-shrink:0;">
-                                        {{ number_format($qStat['avg_score'], 2) }} <span style="font-size:0.75rem; color:var(--text-muted);">/ 5.0</span>
-                                    </div>
-                                @else
-                                    <span class="badge badge-gray" style="font-size:0.75rem;">Text Feedback</span>
-                                @endif
-                            </div>
+                {{-- Interactive Stage Filter Bar --}}
+                <div style="padding:10px 20px; background:var(--surface-alt); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        <span style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); margin-right:4px;">Filter Stage:</span>
+                        <button type="button" class="assessment-stage-btn active" onclick="filterAssessmentSurveyStage('all', this)"
+                                style="padding:4px 10px; font-size:0.78rem; border-radius:100px; border:1px solid var(--green-primary); background:var(--green-primary); color:white; font-weight:700; cursor:pointer;">
+                            📊 All Stages Comparison
+                        </button>
+                        <button type="button" class="assessment-stage-btn" onclick="filterAssessmentSurveyStage('baseline', this)"
+                                style="padding:4px 10px; font-size:0.78rem; border-radius:100px; border:1px solid var(--border); background:#fff; color:var(--text-primary); font-weight:600; cursor:pointer;">
+                            🟢 Baseline ({{ $results['stage_counts']['baseline'] ?? 0 }})
+                        </button>
+                        <button type="button" class="assessment-stage-btn" onclick="filterAssessmentSurveyStage('midline', this)"
+                                style="padding:4px 10px; font-size:0.78rem; border-radius:100px; border:1px solid var(--border); background:#fff; color:var(--text-primary); font-weight:600; cursor:pointer;">
+                            🟣 Midline ({{ $results['stage_counts']['midline'] ?? 0 }})
+                        </button>
+                        <button type="button" class="assessment-stage-btn" onclick="filterAssessmentSurveyStage('endline', this)"
+                                style="padding:4px 10px; font-size:0.78rem; border-radius:100px; border:1px solid var(--border); background:#fff; color:var(--text-primary); font-weight:600; cursor:pointer;">
+                            🔵 Endline ({{ $results['stage_counts']['endline'] ?? 0 }})
+                        </button>
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">
+                        Scale: 1 (Lowest) to 5 (Highest)
+                    </div>
+                </div>
 
-                            @if($qStat['type'] === 'scale' && $qStat['response_count'] > 0)
-                                <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; margin-top:10px;">
-                                    @for($r = 1; $r <= 5; $r++)
-                                        @php
-                                            $count = $qStat['distribution'][$r] ?? 0;
-                                            $pct = $qStat['response_count'] > 0 ? round(($count / $qStat['response_count']) * 100) : 0;
-                                        @endphp
-                                        <div style="background:#fff; border:1px solid var(--border); border-radius:4px; padding:6px 8px; text-align:center;">
-                                            <div style="font-size:0.72rem; color:var(--text-muted);">Rating {{ $r }}</div>
-                                            <div style="font-weight:700; font-size:0.9rem; color:var(--text-primary);">{{ $count }} <span style="font-size:0.7rem; color:var(--text-muted);">({{ $pct }}%)</span></div>
-                                            <div style="height:4px; background:#e5e7eb; border-radius:2px; margin-top:4px; overflow:hidden;">
-                                                <div style="height:100%; width:{{ $pct }}%; background:var(--green-primary);"></div>
-                                            </div>
-                                        </div>
-                                    @endfor
-                                </div>
-                            @endif
-                        </div>
-                    @empty
-                        <div style="text-align:center; padding:32px; color:var(--text-muted);">
-                            No survey questions configured yet.
-                        </div>
-                    @endforelse
+                <div style="padding:16px 20px;">
+                    <div style="height: 320px; position: relative;">
+                        <canvas id="assessmentSurveyChart"></canvas>
+                    </div>
                 </div>
             </div>
 
-            {{-- Qualitative Feedback Feed --}}
+            {{-- Qualitative Feedback Feed (Collapsible & Stage Filtered) --}}
             @if(!empty($results['qualitative_feedback']))
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">💬 Qualitative Participant Feedback</span>
+                @php
+                    $totalQualCount = 0;
+                    foreach ($results['qualitative_feedback'] as $qFeed) {
+                        $totalQualCount += count($qFeed['responses']);
+                    }
+                @endphp
+                <div class="card" id="qualitativeFeedbackCard">
+                    <div class="card-header" onclick="toggleQualitativeCollapse()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="card-title" style="margin: 0;">💬 Qualitative Participant Feedback</span>
+                            <span class="badge badge-gray" id="qualCountBadge" style="font-size: 0.75rem; font-weight: 700;">
+                                {{ $totalQualCount }} responses
+                            </span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 0.82rem;">
+                            <span style="font-size: 0.78rem;">Click to toggle</span>
+                            <span id="qualToggleIcon" style="font-size: 0.95rem; font-weight: bold; transition: transform 0.2s;">▼</span>
+                        </div>
                     </div>
-                    <div style="padding:20px; display:grid; gap:16px;">
+                    <div id="qualitativeFeedbackBody" style="padding: 20px; display: grid; gap: 16px;">
+                        <div id="qualEmptyState" style="display: none; padding: 24px; text-align: center; color: var(--text-secondary); background: var(--surface-alt); border-radius: var(--radius-sm); border: 1px dashed var(--border);">
+                            💬 No qualitative text responses submitted for this survey stage.
+                        </div>
+
                         @foreach($results['qualitative_feedback'] as $qFeed)
-                            <div style="background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px;">
-                                <div style="font-weight:700; color:var(--text-primary); font-size:0.9rem; margin-bottom:12px;">
-                                    ❓ {{ $qFeed['question_text'] }}
+                            <div class="qual-topic-block" style="background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px;">
+                                <div style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                                    <span>❓</span>
+                                    <span>{{ $qFeed['question_text'] }}</span>
                                 </div>
-                                <div style="display:grid; gap:8px;">
-                                    @foreach($qFeed['responses'] as $respText)
-                                        <div style="background:#fff; border-left:3px solid var(--green-primary); padding:10px 14px; border-radius:4px; font-size:0.85rem; color:var(--text-primary); line-height:1.4;">
-                                            "{{ $respText }}"
+                                <div class="qual-responses-list" style="display: grid; gap: 8px;">
+                                    @foreach($qFeed['responses'] as $resp)
+                                        @php
+                                            $respText = is_array($resp) ? ($resp['text'] ?? '') : $resp;
+                                            $respStage = is_array($resp) ? strtolower($resp['stage'] ?? 'baseline') : 'baseline';
+                                            $stageBadgeClass = match($respStage) {
+                                                'midline' => 'badge-purple',
+                                                'endline' => 'badge-blue',
+                                                default => 'badge-teal',
+                                            };
+                                            $stageBorderColor = match($respStage) {
+                                                'midline' => '#8b5cf6',
+                                                'endline' => '#0ea5e9',
+                                                default => '#10b981',
+                                            };
+                                            $stageIcon = match($respStage) {
+                                                'midline' => '⚖️',
+                                                'endline' => '🎓',
+                                                default => '🌱',
+                                            };
+                                        @endphp
+                                        <div class="qual-response-item" data-stage="{{ $respStage }}"
+                                             style="background: #fff; border-left: 3px solid {{ $stageBorderColor }}; padding: 10px 14px; border-radius: 4px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.4; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                                            <div style="flex: 1;">
+                                                "{{ $respText }}"
+                                            </div>
+                                            <span class="badge {{ $stageBadgeClass }}" style="font-size: 0.7rem; padding: 2px 8px; flex-shrink: 0; text-transform: capitalize;">
+                                                {{ $stageIcon }} {{ $respStage }}
+                                            </span>
                                         </div>
                                     @endforeach
                                 </div>
@@ -1160,6 +1200,240 @@ function openStatusModal(candidateId, candidateName, round, currentStatus, notes
 
     openModal('updateStatusModal');
 }
+
+// Initialize Dynamic Survey Bar Chart if present
+(function() {
+    const canvas = document.getElementById('assessmentSurveyChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    @php
+        $surveyChartLabels = [];
+        $surveyChartFull = [];
+        $surveyBaseData = [];
+        $surveyMidData = [];
+        $surveyEndData = [];
+        $surveyOverallData = [];
+
+        if ($results['is_survey'] && !empty($results['survey_question_stats'])) {
+            $qNum = 1;
+            foreach ($results['survey_question_stats'] as $sq) {
+                // Exclude qualitative/text questions from the bar chart
+                if ($sq['type'] !== 'text' && ($sq['type'] === 'scale' || $sq['avg_score'] !== null)) {
+                    $txt = $sq['question_text'];
+                    $surveyChartLabels[] = "Q" . $qNum;
+                    $surveyChartFull[] = "Q{$qNum}: " . $txt;
+                    $surveyBaseData[] = (float) ($sq['baseline_avg'] ?? 0);
+                    $surveyMidData[] = (float) ($sq['midline_avg'] ?? 0);
+                    $surveyEndData[] = (float) ($sq['endline_avg'] ?? 0);
+                    $surveyOverallData[] = (float) ($sq['avg_score'] ?? 0);
+                    $qNum++;
+                }
+            }
+        }
+    @endphp
+
+    const labels = {!! json_encode($surveyChartLabels) !!};
+    const fullLabels = {!! json_encode($surveyChartFull) !!};
+
+    const baseData = {!! json_encode($surveyBaseData) !!};
+    const midData = {!! json_encode($surveyMidData) !!};
+    const endData = {!! json_encode($surveyEndData) !!};
+    const overallData = {!! json_encode($surveyOverallData) !!};
+
+    if (labels.length === 0) return;
+
+    const datasetsConfig = {
+        baseline: {
+            label: 'Baseline Stage',
+            data: baseData,
+            backgroundColor: 'rgba(16, 185, 129, 0.75)',
+            borderColor: 'rgb(16, 185, 129)',
+            borderWidth: 1.5,
+            borderRadius: 4
+        },
+        midline: {
+            label: 'Midline Stage',
+            data: midData,
+            backgroundColor: 'rgba(139, 92, 246, 0.75)',
+            borderColor: 'rgb(139, 92, 246)',
+            borderWidth: 1.5,
+            borderRadius: 4
+        },
+        endline: {
+            label: 'Endline Stage',
+            data: endData,
+            backgroundColor: 'rgba(14, 165, 233, 0.75)',
+            borderColor: 'rgb(14, 165, 233)',
+            borderWidth: 1.5,
+            borderRadius: 4
+        }
+    };
+
+    let chartInstance = null;
+
+    function renderAssessmentChart(stage) {
+        const ctx = canvas.getContext('2d');
+        let activeDatasets = [];
+
+        if (stage === 'baseline') {
+            activeDatasets = [datasetsConfig.baseline];
+        } else if (stage === 'midline') {
+            activeDatasets = [datasetsConfig.midline];
+        } else if (stage === 'endline') {
+            activeDatasets = [datasetsConfig.endline];
+        } else {
+            // Check which stages have non-zero data
+            const hasBase = baseData.some(v => v > 0);
+            const hasMid = midData.some(v => v > 0);
+            const hasEnd = endData.some(v => v > 0);
+
+            if (hasBase || hasMid || hasEnd) {
+                if (hasBase) activeDatasets.push(datasetsConfig.baseline);
+                if (hasMid) activeDatasets.push(datasetsConfig.midline);
+                if (hasEnd) activeDatasets.push(datasetsConfig.endline);
+            } else {
+                activeDatasets = [datasetsConfig.baseline, datasetsConfig.midline, datasetsConfig.endline];
+            }
+        }
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: activeDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 5,
+                        ticks: { stepSize: 1, font: { size: 11, weight: 'bold' } },
+                        title: { display: true, text: 'Rating (1 to 5)', font: { size: 11, weight: 'bold' } },
+                        grid: { color: 'rgba(0,0,0,0.06)' }
+                    },
+                    x: {
+                        ticks: { maxRotation: 30, minRotation: 20, font: { size: 10 } },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: activeDatasets.length > 1,
+                        position: 'top',
+                        labels: { boxWidth: 12, padding: 10, font: { size: 11, weight: '600' } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(items) {
+                                if (!items.length) return '';
+                                return fullLabels[items[0].dataIndex] || labels[items[0].dataIndex];
+                            },
+                            label: function(item) {
+                                return ` ${item.dataset.label}: ${Number(item.raw).toFixed(2)} / 5.00`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    window.toggleQualitativeCollapse = function() {
+        const body = document.getElementById('qualitativeFeedbackBody');
+        const icon = document.getElementById('qualToggleIcon');
+        if (!body) return;
+
+        if (body.style.display === 'none') {
+            body.style.display = 'grid';
+            if (icon) {
+                icon.textContent = '▼';
+                icon.style.transform = 'rotate(0deg)';
+            }
+        } else {
+            body.style.display = 'none';
+            if (icon) {
+                icon.textContent = '▶';
+                icon.style.transform = 'rotate(-90deg)';
+            }
+        }
+    };
+
+    window.filterAssessmentSurveyStage = function(stage, btn) {
+        document.querySelectorAll('.assessment-stage-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.background = '#fff';
+            b.style.color = 'var(--text-primary)';
+            b.style.borderColor = 'var(--border)';
+        });
+
+        btn.classList.add('active');
+        if (stage === 'baseline') {
+            btn.style.background = '#10b981';
+            btn.style.borderColor = '#10b981';
+            btn.style.color = '#fff';
+        } else if (stage === 'midline') {
+            btn.style.background = '#8b5cf6';
+            btn.style.borderColor = '#8b5cf6';
+            btn.style.color = '#fff';
+        } else if (stage === 'endline') {
+            btn.style.background = '#0ea5e9';
+            btn.style.borderColor = '#0ea5e9';
+            btn.style.color = '#fff';
+        } else {
+            btn.style.background = 'var(--green-primary)';
+            btn.style.borderColor = 'var(--green-primary)';
+            btn.style.color = '#fff';
+        }
+
+        // 1. Update Bar Chart
+        renderAssessmentChart(stage);
+
+        // 2. Filter Qualitative Participant Feedback items
+        const qualItems = document.querySelectorAll('.qual-response-item');
+        let visibleCount = 0;
+
+        qualItems.forEach(item => {
+            const itemStage = item.getAttribute('data-stage') || 'baseline';
+            if (stage === 'all' || itemStage === stage) {
+                item.style.display = 'flex';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Toggle visibility of topic blocks based on whether they contain visible responses
+        const topicBlocks = document.querySelectorAll('.qual-topic-block');
+        topicBlocks.forEach(block => {
+            const visibleChild = block.querySelector('.qual-response-item[style*="display: flex"], .qual-response-item:not([style*="display: none"])');
+            const hasVisibleResponses = Array.from(block.querySelectorAll('.qual-response-item')).some(el => el.style.display !== 'none');
+            block.style.display = hasVisibleResponses ? '' : 'none';
+        });
+
+        // Update count badge & empty state banner
+        const countBadge = document.getElementById('qualCountBadge');
+        if (countBadge) {
+            countBadge.textContent = `${visibleCount} response${visibleCount === 1 ? '' : 's'}`;
+        }
+
+        const emptyState = document.getElementById('qualEmptyState');
+        if (emptyState) {
+            emptyState.style.display = (visibleCount === 0 && qualItems.length > 0) ? 'block' : 'none';
+            if (stage !== 'all') {
+                const stageName = stage.charAt(0).toUpperCase() + stage.slice(1);
+                emptyState.textContent = `💬 No qualitative text responses submitted for the ${stageName} stage yet.`;
+            }
+        }
+    };
+
+    renderAssessmentChart('all');
+})();
 </script>
 
 @endsection

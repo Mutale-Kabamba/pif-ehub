@@ -138,14 +138,51 @@ class SurveyController extends Controller
         $stageName = ucfirst($validated['survey_stage']);
 
         DB::transaction(function () use ($validated, $assessment) {
+            $assessment->load('questions');
+            $quantKeys = array_keys(self::$quantQuestions);
+            $qualKeys = array_keys(self::$qualQuestions);
+
+            $surveyResponseData = [
+                'survey_type' => $validated['survey_stage'],
+            ];
+
+            $quantIdx = 0;
+            $qualIdx = 0;
+
             foreach ($validated['scores'] as $qScore) {
                 EvaluationScore::create([
                     'assessment_id' => $assessment->id,
                     'evaluator_id' => auth()->id() ?: session('admin_user_id'),
                     'question_id' => $qScore['question_id'],
                     'score' => isset($qScore['score']) ? (float) $qScore['score'] : null,
+                    'survey_stage' => $validated['survey_stage'],
                     'text_response' => $qScore['text_response'] ?? null,
                 ]);
+
+                $qModel = $assessment->questions->firstWhere('id', $qScore['question_id']);
+                if ($qModel) {
+                    if ($qModel->type === 'scale' && isset($qScore['score'])) {
+                        if (isset($quantKeys[$quantIdx])) {
+                            $surveyResponseData[$quantKeys[$quantIdx]] = (int) round((float) $qScore['score']);
+                            $quantIdx++;
+                        }
+                    } elseif ($qModel->type === 'text' && !empty($qScore['text_response'])) {
+                        if (isset($qualKeys[$qualIdx])) {
+                            $surveyResponseData[$qualKeys[$qualIdx]] = $qScore['text_response'];
+                            $qualIdx++;
+                        }
+                    }
+                }
+            }
+
+            // If at least one question was mapped, also record in survey_responses
+            if ($quantIdx > 0) {
+                foreach ($quantKeys as $k) {
+                    if (!isset($surveyResponseData[$k])) {
+                        $surveyResponseData[$k] = 3;
+                    }
+                }
+                SurveyResponse::create($surveyResponseData);
             }
         });
 

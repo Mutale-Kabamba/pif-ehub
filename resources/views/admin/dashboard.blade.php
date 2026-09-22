@@ -79,12 +79,16 @@
     {{-- Engine Type Filter Tabs --}}
     <div class="tabs" style="margin:0;">
         <a href="{{ route('admin.dashboard', array_filter(['status' => $statusFilter, 'q' => $searchQuery])) }}"
-           class="tab {{ empty($typeFilter) ? 'active' : '' }}" style="padding:4px 12px; font-size:0.82rem;">
+           class="tab {{ empty($typeFilter) && request()->query('tab') !== 'analytics' ? 'active' : '' }}" style="padding:4px 12px; font-size:0.82rem;">
             All Engines
         </a>
         <a href="{{ route('admin.dashboard', array_filter(['type' => 'survey', 'status' => $statusFilter, 'q' => $searchQuery])) }}"
-           class="tab {{ $typeFilter === 'survey' ? 'active' : '' }}" style="padding:4px 12px; font-size:0.82rem;">
+           class="tab {{ $typeFilter === 'survey' && request()->query('tab') !== 'analytics' ? 'active' : '' }}" style="padding:4px 12px; font-size:0.82rem;">
             📋 Surveys
+        </a>
+        <a href="{{ route('admin.dashboard', array_filter(['tab' => 'analytics', 'status' => $statusFilter, 'q' => $searchQuery])) }}"
+           class="tab {{ request()->query('tab') === 'analytics' ? 'active' : '' }}" style="padding:4px 12px; font-size:0.82rem; background:{{ request()->query('tab') === 'analytics' ? 'var(--green-primary)' : 'transparent' }}; color:{{ request()->query('tab') === 'analytics' ? '#fff' : 'inherit' }}; font-weight:700;">
+            📈 Survey Results &amp; Charts
         </a>
         <a href="{{ route('admin.dashboard', array_filter(['type' => 'assessment', 'status' => $statusFilter, 'q' => $searchQuery])) }}"
            class="tab {{ $typeFilter === 'assessment' ? 'active' : '' }}" style="padding:4px 12px; font-size:0.82rem;">
@@ -101,6 +105,9 @@
         @if($typeFilter)
             <input type="hidden" name="type" value="{{ $typeFilter }}">
         @endif
+        @if(request()->query('tab'))
+            <input type="hidden" name="tab" value="{{ request()->query('tab') }}">
+        @endif
 
         <select name="status" onchange="this.form.submit()" style="padding:4px 8px; font-size:0.8rem; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); color:var(--text-primary);">
             <option value="">All Statuses</option>
@@ -116,7 +123,7 @@
             🔍
         </button>
 
-        @if($typeFilter || $statusFilter || $searchQuery)
+        @if($typeFilter || $statusFilter || $searchQuery || request()->query('tab'))
             <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost btn-sm" style="padding:4px 6px; font-size:0.75rem;" title="Reset filters">
                 ✕ Reset
             </a>
@@ -124,8 +131,17 @@
     </form>
 </div>
 
+{{-- Survey M&E Competency Insights & Bar Charts (Shown on Survey tab or Analytics tab) --}}
+@if(request()->query('tab') === 'analytics' || $typeFilter === 'survey')
+    <div class="card" style="margin-bottom:20px; padding:20px;">
+        @include('admin.partials.analytics')
+    </div>
+@endif
+
 {{-- Engine List & Result Launchers --}}
-@if($assessments->isEmpty())
+@if(request()->query('tab') === 'analytics')
+    {{-- On dedicated Analytics tab, focus on the charts & tables --}}
+@elseif($assessments->isEmpty())
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:40px 20px; text-align:center; color:var(--text-muted);">
         <div style="font-size:2.5rem; margin-bottom:8px;">🔍</div>
         <h3 style="color:var(--text-primary); font-size:1.1rem; margin-bottom:4px;">No matching engines found</h3>

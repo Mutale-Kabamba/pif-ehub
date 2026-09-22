@@ -539,6 +539,9 @@ class ExcelImportExportService
             ];
         }
 
+        $isSurvey = ($assessment->type === 'survey');
+        $defaultSurveyStage = $assessment->rule?->rules_json['survey_stage'] ?? 'baseline';
+
         $imported = 0;
         $updated = 0;
         $errors = [];
@@ -546,8 +549,29 @@ class ExcelImportExportService
         DB::beginTransaction();
         try {
             foreach ($rows as $index => $row) {
-                // 1. Resolve Candidate
-                $candidateName = $row['candidate'] ?? $row['candidatename'] ?? $row['name'] ?? $row['candidatefullname'] ?? null;
+                // Determine survey stage if assessment is survey
+                $surveyStage = $defaultSurveyStage;
+                if ($isSurvey) {
+                    foreach (['surveystage', 'surveystagebaselinemidlineendline', 'stage', 'surveytype', 'type', 'phase'] as $stKey) {
+                        if (!empty($row[$stKey])) {
+                            $rawSt = strtolower(trim((string)$row[$stKey]));
+                            if (str_contains($rawSt, 'mid')) {
+                                $surveyStage = 'midline';
+                                break;
+                            } elseif (str_contains($rawSt, 'end')) {
+                                $surveyStage = 'endline';
+                                break;
+                            } elseif (str_contains($rawSt, 'base')) {
+                                $surveyStage = 'baseline';
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 1. Resolve Candidate / Respondent
+                $candidateName = $row['candidate'] ?? $row['candidatename'] ?? $row['name'] ?? $row['candidatefullname']
+                    ?? $row['respondentcodeidentifier'] ?? $row['respondentname'] ?? $row['respondent'] ?? null;
                 $candidateId = null;
 
                 if ($candidateName) {
@@ -687,16 +711,22 @@ class ExcelImportExportService
                             $textResponse = is_numeric($matchedVal) ? null : (string) $matchedVal;
                         }
 
-                        $scoreRecord = EvaluationScore::where('assessment_id', $assessment->id)
+                        $scoreQuery = EvaluationScore::where('assessment_id', $assessment->id)
                             ->where('candidate_id', $candidateId)
                             ->where('evaluator_id', $evaluatorId)
-                            ->where('question_id', $question->id)
-                            ->first();
+                            ->where('question_id', $question->id);
+
+                        if ($isSurvey) {
+                            $scoreQuery->where('survey_stage', $surveyStage);
+                        }
+
+                        $scoreRecord = $scoreQuery->first();
 
                         if ($scoreRecord) {
                             $scoreRecord->update([
                                 'score' => $score,
                                 'text_response' => $textResponse,
+                                'survey_stage' => $isSurvey ? $surveyStage : ($scoreRecord->survey_stage ?: 'baseline'),
                             ]);
                             $updated++;
                         } else {
@@ -706,6 +736,7 @@ class ExcelImportExportService
                                 'evaluator_id' => $evaluatorId,
                                 'question_id' => $question->id,
                                 'score' => $score,
+                                'survey_stage' => $isSurvey ? $surveyStage : 'baseline',
                                 'text_response' => $textResponse,
                             ]);
                             $imported++;
@@ -738,21 +769,33 @@ class ExcelImportExportService
      */
     public function downloadAssessmentTemplate(Assessment $assessment, string $format = 'xlsx'): StreamedResponse
     {
-        $assessment->load(['questions.options', 'candidates', 'panelists']);
+        $assessment->load([
+            'questions.options',
+            'candidates',
+            'panelists',
+            'evaluationScores.candidate',
+            'evaluationScores.evaluator',
+            'evaluationScores.question',
+            'rule',
+        ]);
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle(substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $assessment->title), 0, 30) ?: 'Template');
+        $sheet->setTitle(substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $assessment->title), 0, 30) ?: 'Results');
 
         $rules = $assessment->rules ? (is_array($assessment->rules->rules_json) ? $assessment->rules->rules_json : json_decode($assessment->rules->rules_json, true)) : [];
         $isSurvey = $assessment->type === 'survey';
-        $surveyStage = ucfirst($rules['survey_stage'] ?? 'Baseline');
         $isAnonymous = !empty($rules['is_anonymous']);
+        $allScores = $assessment->evaluationScores;
 
         if ($isSurvey) {
-            $headers = [$isAnonymous ? 'Respondent Code / Identifier' : 'Respondent Name / Student ID', 'Survey Stage (Baseline/Midline/Endline)'];
+            $headers = [
+                $isAnonymous ? 'Respondent Identifier' : 'Respondent Name / Student ID',
+                'Survey Stage',
+                'Submitted Date/Time',
+            ];
         } else {
-            $headers = ['Evaluator Name / Email', 'Candidate Name', 'Panel'];
+            $headers = ['Evaluator Name / Email', 'Candidate Name', 'Panel', 'Round', 'Selection Status'];
         }
 
         foreach ($assessment->questions as $idx => $q) {
@@ -766,83 +809,152 @@ class ExcelImportExportService
             $headers[] = "Q{$num}: {$q->question_text} ({$typeHint})";
         }
 
-        $sampleData = [];
-        $sampleEvaluator = $assessment->panelists->first()?->name ?: 'Mutale Kabamba';
+        if (!$isSurvey) {
+            $headers[] = 'Total Score';
+            $headers[] = 'Benchmark Status';
+        }
+
+        $exportData = [];
 
         if ($isSurvey) {
-            if ($isAnonymous) {
-                $sampleRespondents = [
-                    ['RESP-001', "{$surveyStage} Survey"],
-                    ['RESP-002', "{$surveyStage} Survey"],
-                    ['RESP-003', "{$surveyStage} Survey"],
-                ];
-            } else {
-                $sampleRespondents = [
-                    ['Diana Mungala', "{$surveyStage} Survey"],
-                    ['Emma Banda', "{$surveyStage} Survey"],
-                    ['Kabwe Tembo', "{$surveyStage} Survey"],
-                ];
-            }
+            // Group real survey responses by submission instance
+            $submissions = $allScores->groupBy(function ($item) {
+                $ts = $item->created_at ? $item->created_at->format('Y-m-d H:i:s') : 'legacy_' . $item->id;
+                return ($item->evaluator_id ?: 'anon') . '_' . ($item->candidate_id ?: 'anon') . '_' . ($item->survey_stage ?: 'baseline') . '_' . $ts;
+            });
 
-            foreach ($sampleRespondents as $resp) {
-                $row = [$resp[0], $resp[1]];
-                foreach ($assessment->questions as $q) {
-                    if ($q->type === 'scale') {
-                        $row[] = 4;
-                    } elseif ($q->type === 'boolean') {
-                        $row[] = 'Yes';
-                    } elseif ($q->type === 'multiple_choice' && $q->options->isNotEmpty()) {
-                        $row[] = $q->options->first()->option_label;
-                    } else {
-                        $row[] = 'Constructive qualitative feedback on training modules.';
+            if ($submissions->isNotEmpty()) {
+                $respIndex = 1;
+                foreach ($submissions as $subScores) {
+                    $firstScore = $subScores->first();
+                    $cand = $firstScore->candidate;
+                    $respName = $cand ? $cand->name : "Respondent #{$respIndex}";
+                    $stageName = ucfirst($firstScore->survey_stage ?: 'Baseline');
+                    $dateStr = $firstScore->created_at ? $firstScore->created_at->format('Y-m-d H:i:s') : date('Y-m-d H:i:s');
+
+                    $row = [$respName, $stageName, $dateStr];
+
+                    foreach ($assessment->questions as $q) {
+                        $qScore = $subScores->firstWhere('question_id', $q->id);
+                        if ($qScore) {
+                            if ($q->type === 'text') {
+                                $row[] = $qScore->text_response ?? '';
+                            } elseif ($q->type === 'boolean') {
+                                $row[] = $qScore->text_response ?? ($qScore->score == 1.0 ? 'Yes' : 'No');
+                            } elseif ($q->type === 'multiple_choice') {
+                                $row[] = $qScore->text_response ?? ($qScore->score !== null ? (string)$qScore->score : '');
+                            } else {
+                                $row[] = $qScore->score !== null ? (float)$qScore->score : '';
+                            }
+                        } else {
+                            $row[] = '';
+                        }
                     }
+
+                    $exportData[] = $row;
+                    $respIndex++;
                 }
-                $sampleData[] = $row;
-            }
-        } elseif ($assessment->candidates->isNotEmpty()) {
-            foreach ($assessment->candidates->take(5) as $cand) {
-                $row = [$sampleEvaluator, $cand->name, 'Panel ' . ($cand->panel ?: 'A')];
+            } else {
+                // If no responses in system yet, provide 1 blank row template
+                $blankRow = [$isAnonymous ? 'RESP-001' : 'Student Name', 'Baseline', date('Y-m-d H:i:s')];
                 foreach ($assessment->questions as $q) {
-                    if ($q->type === 'scale') {
-                        $row[] = 4;
-                    } elseif ($q->type === 'boolean') {
-                        $row[] = 'Yes';
-                    } elseif ($q->type === 'multiple_choice' && $q->options->isNotEmpty()) {
-                        $row[] = $q->options->first()->option_label;
-                    } else {
-                        $row[] = 'Sample response feedback';
-                    }
+                    $blankRow[] = '';
                 }
-                $sampleData[] = $row;
+                $exportData[] = $blankRow;
             }
         } else {
-            // Default sample rows
-            $sampleCandidates = [
-                ['Diana Mungala', 'Panel A'],
-                ['Emma Banda', 'Panel A'],
-                ['Kabwe Tembo', 'Panel B'],
-            ];
-            foreach ($sampleCandidates as $c) {
-                $row = [$sampleEvaluator, $c[0], $c[1]];
-                foreach ($assessment->questions as $q) {
-                    if ($q->type === 'scale') {
-                        $row[] = 4;
-                    } elseif ($q->type === 'boolean') {
-                        $row[] = 'Yes';
-                    } elseif ($q->type === 'multiple_choice' && $q->options->isNotEmpty()) {
-                        $row[] = $q->options->first()->option_label;
-                    } else {
-                        $row[] = 'Sample qualitative response';
+            // Group real candidate evaluations
+            $evaluations = $allScores->groupBy(function ($item) {
+                return ($item->evaluator_id ?: '0') . '_' . ($item->candidate_id ?: '0');
+            });
+
+            if ($evaluations->isNotEmpty()) {
+                foreach ($evaluations as $evalScores) {
+                    $firstScore = $evalScores->first();
+                    $evaluatorName = $firstScore->evaluator?->name ?: $firstScore->evaluator?->email ?: 'Evaluator';
+                    $cand = $firstScore->candidate;
+                    $candName = $cand?->name ?? 'Candidate';
+                    $candPanel = 'Panel ' . ($cand?->panel ?: 'A');
+                    $candRound = (int)($cand?->round ?? 1);
+                    $candStatus = ucfirst($cand?->selection_status ?? 'pending');
+
+                    $row = [$evaluatorName, $candName, $candPanel, $candRound, $candStatus];
+                    $totalScore = 0.0;
+                    $hasScore = false;
+
+                    foreach ($assessment->questions as $q) {
+                        $qScore = $evalScores->firstWhere('question_id', $q->id);
+                        if ($qScore) {
+                            if ($q->type === 'text') {
+                                $row[] = $qScore->text_response ?? '';
+                            } elseif ($q->type === 'boolean') {
+                                $row[] = $qScore->text_response ?? ($qScore->score == 1.0 ? 'Yes' : 'No');
+                                if ($qScore->score !== null) {
+                                    $totalScore += (float)$qScore->score;
+                                    $hasScore = true;
+                                }
+                            } elseif ($q->type === 'multiple_choice') {
+                                $row[] = $qScore->text_response ?? ($qScore->score !== null ? (string)$qScore->score : '');
+                                if ($qScore->score !== null) {
+                                    $totalScore += (float)$qScore->score;
+                                    $hasScore = true;
+                                }
+                            } else {
+                                $row[] = $qScore->score !== null ? (float)$qScore->score : '';
+                                if ($qScore->score !== null) {
+                                    $totalScore += (float)$qScore->score;
+                                    $hasScore = true;
+                                }
+                            }
+                        } else {
+                            $row[] = '';
+                        }
                     }
+
+                    $row[] = $hasScore ? round($totalScore, 2) : '';
+                    $passThreshold = $assessment->rule?->passing_threshold;
+                    if ($passThreshold !== null && $hasScore) {
+                        $row[] = $totalScore >= $passThreshold ? 'Passed' : 'Failed';
+                    } else {
+                        $row[] = 'N/A';
+                    }
+
+                    $exportData[] = $row;
                 }
-                $sampleData[] = $row;
+            } elseif ($assessment->candidates->isNotEmpty()) {
+                // If not scored yet, list assigned candidates with blank score columns
+                $evaluatorName = $assessment->panelists->first()?->name ?: 'Panel Evaluator';
+                foreach ($assessment->candidates as $cand) {
+                    $row = [
+                        $evaluatorName,
+                        $cand->name,
+                        'Panel ' . ($cand->panel ?: 'A'),
+                        $cand->round ?? 1,
+                        ucfirst($cand->selection_status ?? 'pending')
+                    ];
+                    foreach ($assessment->questions as $q) {
+                        $row[] = '';
+                    }
+                    $row[] = '';
+                    $row[] = 'N/A';
+                    $exportData[] = $row;
+                }
+            } else {
+                // Blank template row
+                $blankRow = ['Evaluator Name', 'Candidate Name', 'Panel A', 1, 'Pending'];
+                foreach ($assessment->questions as $q) {
+                    $blankRow[] = '';
+                }
+                $blankRow[] = '';
+                $blankRow[] = 'N/A';
+                $exportData[] = $blankRow;
             }
         }
 
-        // Write headers and sample data
+        // Write headers and real data to spreadsheet
         $sheet->fromArray([$headers], null, 'A1');
-        if (!empty($sampleData)) {
-            $sheet->fromArray($sampleData, null, 'A2');
+        if (!empty($exportData)) {
+            $sheet->fromArray($exportData, null, 'A2');
         }
 
         $highestColumn = $sheet->getHighestColumn();
@@ -869,7 +981,7 @@ class ExcelImportExportService
         }
 
         $safeTitle = Str::slug($assessment->title) ?: 'assessment';
-        $filename = "PIF_{$safeTitle}_Results_Template";
+        $filename = "PIF_{$safeTitle}_Results_Export";
         $extension = $format === 'csv' ? 'csv' : 'xlsx';
         $contentType = $format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
         $downloadName = "{$filename}.{$extension}";

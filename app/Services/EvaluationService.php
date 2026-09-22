@@ -177,7 +177,25 @@ class EvaluationService
             $qScores = $allScores->where('question_id', $question->id);
             $numericScores = $qScores->whereNotNull('score')->pluck('score');
             $avgScore = $numericScores->isNotEmpty() ? round($numericScores->avg(), 2) : null;
-            $textResponses = $qScores->whereNotNull('text_response')->where('text_response', '!=', '')->pluck('text_response')->toArray();
+            $textResponses = $qScores->whereNotNull('text_response')
+                ->where('text_response', '!=', '')
+                ->map(function ($s) {
+                    return [
+                        'text' => $s->text_response,
+                        'stage' => $s->survey_stage ?: 'baseline',
+                        'created_at' => $s->created_at ? $s->created_at->format('M d, Y') : null,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+            $baseScores = $qScores->where('survey_stage', 'baseline')->whereNotNull('score')->pluck('score');
+            $midScores = $qScores->where('survey_stage', 'midline')->whereNotNull('score')->pluck('score');
+            $endScores = $qScores->where('survey_stage', 'endline')->whereNotNull('score')->pluck('score');
+
+            $baseAvg = $baseScores->isNotEmpty() ? round($baseScores->avg(), 2) : 0.0;
+            $midAvg = $midScores->isNotEmpty() ? round($midScores->avg(), 2) : 0.0;
+            $endAvg = $endScores->isNotEmpty() ? round($endScores->avg(), 2) : 0.0;
 
             if ($numericScores->isNotEmpty()) {
                 $totalLikertSum += $numericScores->sum();
@@ -197,6 +215,12 @@ class EvaluationService
                 'type' => $question->type,
                 'response_count' => $qScores->count(),
                 'avg_score' => $avgScore,
+                'baseline_avg' => $baseAvg,
+                'midline_avg' => $midAvg,
+                'endline_avg' => $endAvg,
+                'baseline_count' => $baseScores->count(),
+                'midline_count' => $midScores->count(),
+                'endline_count' => $endScores->count(),
                 'distribution' => [
                     1 => $numericScores->filter(fn($s) => round($s) == 1)->count(),
                     2 => $numericScores->filter(fn($s) => round($s) == 2)->count(),
@@ -210,8 +234,39 @@ class EvaluationService
 
         $overallSurveyAverage = $totalLikertCount > 0 ? round($totalLikertSum / $totalLikertCount, 2) : 0.0;
         $rulesData = $assessment->rule?->rules_json ?? [];
-        $surveyStage = $rulesData['survey_stage'] ?? 'baseline';
         $isAnonymous = $rulesData['is_anonymous'] ?? true;
+
+        // Detect stages present in scores
+        $presentStages = $allScores->pluck('survey_stage')->filter()->unique()->values()->toArray();
+        if (count($presentStages) === 1) {
+            $surveyStage = $presentStages[0];
+        } elseif (count($presentStages) > 1) {
+            $surveyStage = implode(' / ', array_map('ucfirst', $presentStages));
+        } else {
+            $surveyStage = $rulesData['survey_stage'] ?? 'baseline';
+        }
+
+        $stageCounts = [
+            'baseline' => $allScores->where('survey_stage', 'baseline')->groupBy(function($item) {
+                return ($item->evaluator_id ?: 'anon') . '_' . ($item->candidate_id ?: 'anon') . '_' . ($item->created_at ? $item->created_at->format('Y-m-d_H:i') : $item->id);
+            })->count(),
+            'midline' => $allScores->where('survey_stage', 'midline')->groupBy(function($item) {
+                return ($item->evaluator_id ?: 'anon') . '_' . ($item->candidate_id ?: 'anon') . '_' . ($item->created_at ? $item->created_at->format('Y-m-d_H:i') : $item->id);
+            })->count(),
+            'endline' => $allScores->where('survey_stage', 'endline')->groupBy(function($item) {
+                return ($item->evaluator_id ?: 'anon') . '_' . ($item->candidate_id ?: 'anon') . '_' . ($item->created_at ? $item->created_at->format('Y-m-d_H:i') : $item->id);
+            })->count(),
+        ];
+
+        $baseAllScores = $allScores->where('survey_stage', 'baseline')->whereNotNull('score')->pluck('score');
+        $midAllScores = $allScores->where('survey_stage', 'midline')->whereNotNull('score')->pluck('score');
+        $endAllScores = $allScores->where('survey_stage', 'endline')->whereNotNull('score')->pluck('score');
+
+        $stageOverallAverages = [
+            'baseline' => $baseAllScores->isNotEmpty() ? round($baseAllScores->avg(), 2) : 0.0,
+            'midline' => $midAllScores->isNotEmpty() ? round($midAllScores->avg(), 2) : 0.0,
+            'endline' => $endAllScores->isNotEmpty() ? round($endAllScores->avg(), 2) : 0.0,
+        ];
 
         $passedCount = $isSurvey ? 0 : count(array_filter($candidateResults, fn($r) => $r['passed'] === true));
         $failedCount = $isSurvey ? 0 : count(array_filter($candidateResults, fn($r) => $r['passed'] === false));
@@ -232,6 +287,9 @@ class EvaluationService
             'assessment' => $assessment,
             'is_survey' => $isSurvey,
             'survey_stage' => $surveyStage,
+            'survey_stages_present' => $presentStages,
+            'stage_counts' => $stageCounts,
+            'stage_overall_averages' => $stageOverallAverages,
             'is_anonymous' => $isAnonymous,
             'total_candidates' => $isSurvey ? ($distinctSurveyRespondents ?: $candidates->count()) : $candidates->count(),
             'total_panelists' => $assessment->panelists->count(),

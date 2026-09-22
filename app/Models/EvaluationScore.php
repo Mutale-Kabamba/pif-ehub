@@ -21,6 +21,7 @@ class EvaluationScore extends Model
         'evaluator_id',
         'question_id',
         'score',
+        'survey_stage',
         'text_response',
     ];
 

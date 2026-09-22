@@ -166,8 +166,9 @@ class AdminController extends Controller
         }
 
         $assessments = $query->orderBy('created_at', 'desc')->get();
+        $analytics = $this->getAnalyticsData();
 
-        return view('admin.dashboard', [
+        return view('admin.dashboard', array_merge([
             'user'             => $user,
             'totalSurveys'     => $totalSurveys,
             'totalAssessments' => $totalAssessments,
@@ -176,7 +177,8 @@ class AdminController extends Controller
             'typeFilter'       => $typeFilter,
             'statusFilter'     => $statusFilter,
             'searchQuery'      => $searchQuery,
-        ]);
+            'analytics'        => $analytics,
+        ], $analytics));
     }
 
     /**
